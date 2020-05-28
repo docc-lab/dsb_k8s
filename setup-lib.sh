@@ -76,17 +76,10 @@ UBUNTUMIRRORPATH=""
 KUBESPRAY_REPO="https://github.com/kubernetes-incubator/kubespray.git"
 KUBESPRAY_USE_VIRTUALENV=1
 KUBESPRAY_VIRTUALENV=kubespray-virtualenv
-KUBESPRAY_VERSION=release-2.11
-DOCKER_VERSION=18.09
-K8S_VERSION=v1.15.6
-HELM_VERSION=v2.14.3
-
-CORD_VERSION=7.0.0
-CORD_PLATFORM_CHART_REPO=https://gerrit.opencord.org/cord-platform
-CORD_PLATFORM_CHART_COMMIT=
-COMAC_VERSION=
-COMAC_CHART_REPO=https://gerrit.opencord.org/helm-charts
-COMAC_CHART_COMMIT=
+KUBESPRAY_VERSION=release-2.13.1
+DOCKER_VERSION=
+K8S_VERSION=
+HELM_VERSION=
 
 #
 # We have an 'admin' user that gets a random password that comes in from

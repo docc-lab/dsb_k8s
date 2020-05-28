@@ -98,9 +98,7 @@ disable_swap: True
 ansible_python_interpreter: /usr/bin/python2.7
 ansible_user: root
 ansible_become: true
-docker_version: ${DOCKER_VERSION}
 docker_iptables_enabled: True
-kube_version: ${K8S_VERSION}
 kube_feature_gates: [SCTPSupport=true]
 kube_network_plugin: calico
 kube_network_plugin_multus: true
@@ -113,8 +111,22 @@ kubeadm_enabled: True
 kubelet_custom_flags: [--allowed-unsafe-sysctls=net.*]
 dns_min_replicas: 1
 helm_enabled: True
+EOF
+if [ -n "${DOCKER_VERSION}" ]; then
+    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+docker_version: ${DOCKER_VERSION}
+EOF
+fi
+if [ -n "${K8S_VERSION}" ]; then
+    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_version: ${K8S_VERSION}
+EOF
+fi
+if [ -n "${HELM_VERSION}" ]; then
+    cat <<EOF >> $INVDIR/group_vars/all/all.yml
 helm_version: ${HELM_VERSION}
 EOF
+fi
 
 DOCKOPTS='--insecure-registry={{ kube_service_addresses }}  {{ docker_log_opts }}'
 for lan in $DATALANS ; do
@@ -146,7 +158,7 @@ kubectl wait pod -n kube-system --for=condition=Ready --all
 # kubespray bug (release-2.11) that causes this.
 #
 which helm
-if [ ! $? -eq 0 ]; then
+if [ ! $? -eq 0 -a -n "${HELM_VERSION}" ]; then
     wget https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz
     tar -xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz
     mv linux-amd64/helm /usr/local/bin/helm
