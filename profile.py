@@ -37,11 +37,11 @@ pc.defineParameter(
     "nodeCount","Number of Nodes",
     portal.ParameterType.INTEGER,3,
     longDescription="Number of nodes in your k8s cluster.  Should be either 1, or >= 3.")
-pc.defineParameter(
-    "k8sInstaller","Kubernetes Install",
-    portal.ParameterType.STRING,"default",
-    [("default","default"),("kubeadm","kubeadm"),("kubespray","kubespray")],
-    longDescription="")
+#pc.defineParameter(
+#    "k8sInstaller","Kubernetes Install",
+#    portal.ParameterType.STRING,"default",
+#    [("default","default"),("kubeadm","kubeadm"),("kubespray","kubespray")],
+#    longDescription="")
 pc.defineParameter(
     "nodeType","Hardware Type",
     portal.ParameterType.NODETYPE,"",
