@@ -80,6 +80,8 @@ KUBESPRAY_VERSION=release-2.13
 DOCKER_VERSION=
 K8S_VERSION=
 HELM_VERSION=
+SSLCERTTYPE="self"
+SSLCERTCONFIG="proxy"
 
 #
 # We have an 'admin' user that gets a random password that comes in from
