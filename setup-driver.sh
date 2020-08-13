@@ -11,7 +11,7 @@ if [ $EUID -ne 0 ] ; then
 fi
 
 ALLNODESCRIPTS="setup-root-ssh.sh setup-disk-space.sh"
-HEADNODESCRIPTS="setup-letsencrypt.sh setup-nginx.sh setup-kubespray.sh setup-cord.sh setup-comac.sh"
+HEADNODESCRIPTS="setup-nginx.sh setup-ssl.sh setup-kubespray.sh setup-kubernetes-extra.sh"
 
 export SRC=`dirname $0`
 cd $SRC
