@@ -94,11 +94,11 @@ EOF
 
 cat <<EOF >> $INVDIR/group_vars/all/all.yml
 override_system_hostname: False
-disable_swap: True
+disable_swap: true
 ansible_python_interpreter: /usr/bin/python2.7
 ansible_user: root
 ansible_become: true
-docker_iptables_enabled: True
+docker_iptables_enabled: true
 kube_feature_gates: [SCTPSupport=true]
 kube_network_plugin: calico
 kube_network_plugin_multus: true
@@ -107,10 +107,11 @@ kube_proxy_mode: iptables
 kube_pods_subnet: 192.168.0.0/17
 kube_service_addresses: 192.168.128.0/17
 kube_apiserver_node_port_range: 2000-36767
-kubeadm_enabled: True
+kubeadm_enabled: true
 kubelet_custom_flags: [--allowed-unsafe-sysctls=net.*]
 dns_min_replicas: 1
-helm_enabled: True
+helm_enabled: true
+dashboard_enabled: true
 EOF
 if [ -n "${DOCKER_VERSION}" ]; then
     cat <<EOF >> $INVDIR/group_vars/all/all.yml
@@ -139,8 +140,15 @@ kubeconfig_localhost: true
 docker_options: "$DOCKOPTS"
 metrics_server_enabled: true
 kube_basic_auth: true
-kube_api_pwd: $ADMIN_PASS
+kube_api_pwd: "$ADMIN_PASS"
+kube_users:
+  admin:
+    pass: "{{kube_api_pwd}}"
+    role: admin
+    groups:
+      - system:masters
 EOF
+#kube_api_anonymous_auth: false
 
 ansible-playbook -i inventories/emulab/inventory.ini \
     kubespray/cluster.yml -b -v
