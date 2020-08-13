@@ -62,6 +62,18 @@ pc.defineParameter(
     portal.ParameterType.BOOLEAN,False,
     longDescription="Multiplex any networks over physical interfaces using VLANs.  Some physical machines have only a single experiment network interface, so if you want multiple links/LANs, you have to enable multiplexing.  Currently, if you select this option.",
     advanced=True)
+pc.defineParameter(
+    "sslCertType","SSL Certificate Type",
+    portal.ParameterType.STRING,"self",
+    [("none","None"),("self","Self-Signed"),("letsencrypt","Let's Encrypt")],
+    advanced=True,
+    longDescription="Choose an SSL Certificate strategy.  By default, we generate self-signed certificates, and only use them for a reverse web proxy to allow secure remote access to the Kubernetes Dashboard.  However, you may choose `None` if you prefer to arrange remote access differently (e.g. ssh port forwarding).  You may also choose to use Let's Encrypt certificates whose trust root is accepted by all modern browsers.")
+pc.defineParameter(
+    "sslCertConfig","SSL Certificate Configuration",
+    portal.ParameterType.STRING,"proxy",
+    [("proxy","Web Proxy")],
+    advanced=True,
+    longDescription="Choose where you want the SSL certificates deployed.  Currently the only option is for them to be configured as part of the web proxy to the dashboard.")
 
 #
 # Get any input parameter values that will override our defaults.
