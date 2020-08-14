@@ -58,10 +58,6 @@ RMLOCKFILE="lockfile-remove "
 PSWDGEN="openssl rand -hex 10"
 SSH="ssh -o StrictHostKeyChecking=no"
 SCP="scp -p -o StrictHostKeyChecking=no"
-#PYTHON=python3
-#PIP=pip3
-PYTHON=python
-PIP=pip
 
 #
 # Our default configuration
@@ -109,43 +105,116 @@ if [ ${DO_APT_INSTALL} -eq 0 ]; then
     APTGETINSTALL="/bin/true ${APTGETINSTALL}"
 fi
 
-#
-# Grab our geni creds, and create a GENI credential cert
-#
-dpkg -s python-m2crypto >/dev/null 2>&1
-if [ ! $? -eq 0 ]; then
-    apt-get $DPKGOPTS install $APTGETINSTALLOPTS python-m2crypto
-    # Keep trying again with updated cache forever;
-    # we must have this package.
-    success=$?
-    while [ ! $success -eq 0 ]; do
+do_apt_update() {
+    if [ ! -f $OURDIR/apt-updated -a "${DO_APT_UPDATE}" = "1" ]; then
 	apt-get update
-	apt-get $DPKGOPTS install $APTGETINSTALLOPTS python-m2crypto
-	success=$?
+	touch $OURDIR/apt-updated
+    fi
+}
+
+are_packages_installed() {
+    retval=1
+    while [ ! -z "$1" ] ; do
+	dpkg -s "$1" >/dev/null 2>&1
+	if [ ! $? -eq 0 ] ; then
+	    retval=0
+	fi
+	shift
     done
+    return $retval
+}
+
+maybe_install_packages() {
+    if [ ! ${DO_APT_UPGRADE} -eq 0 ] ; then
+        # Just do an install/upgrade to make sure the package(s) are installed
+	# and upgraded; we want to try to upgrade the package.
+	$APTGETINSTALL $@
+	return $?
+    else
+	# Ok, check if the package is installed; if it is, don't install.
+	# Otherwise, install (and maybe upgrade, due to dependency side effects).
+	# Also, optimize so that we try to install or not install all the
+	# packages at once if none are installed.
+	are_packages_installed $@
+	if [ $? -eq 1 ]; then
+	    return 0
+	fi
+
+	retval=0
+	while [ ! -z "$1" ] ; do
+	    are_packages_installed $1
+	    if [ $? -eq 0 ]; then
+		$APTGETINSTALL $1
+		retval=`expr $retval \| $?`
+	    fi
+	    shift
+	done
+	return $retval
+    fi
+}
+
+##
+## Figure out the system python version.
+##
+python --version
+if [ ! $? -eq 0 ]; then
+    python3 --version
+    if [ $? -eq 0 ]; then
+	PYTHON=python3
+    else
+	are_packages_installed python3
+	success=`expr $? = 1`
+	# Keep trying again with updated cache forever;
+	# we must have python.
+	while [ ! $success -eq 0 ]; do
+	    do_apt_update
+	    apt-get $DPKGOPTS install $APTGETINSTALLOPTS python3
+	    success=$?
+	done
+	PYTHON=python3
+    fi
+else
+    PYTHON=python
 fi
+$PYTHON --version | grep -q "Python 3"
+if [ $? -eq 0 ]; then
+    PYVERS=3
+    PIP=pip3
+else
+    PYVERS=2
+    PIP=pip
+fi
+
+##
+## Grab our geni creds, and create a GENI credential cert
+##
+are_packages_installed ${PYTHON}-cryptography ${PYTHON}-future \
+    ${PYTHON}-six ${PYTHON}-lxml ${PYTHON}-pip
+success=`expr $? = 1`
+# Keep trying again with updated cache forever;
+# we must have this package.
+while [ ! $success -eq 0 ]; do
+    do_apt_update
+    apt-get $DPKGOPTS install $APTGETINSTALLOPTS ${PYTHON}-cryptography \
+	${PYTHON}-future ${PYTHON}-six ${PYTHON}-lxml ${PYTHON}-pip
+    success=$?
+done
 
 if [ ! -e $OURDIR/geni.key ]; then
     geni-get key > $OURDIR/geni.key
     cat $OURDIR/geni.key | grep -q END\ .\*\PRIVATE\ KEY
-    if [ $? -eq 0 ]; then
-	HAS_GENI_KEY=1
-    else
-	HAS_GENI_KEY=0
+    if [ ! $? -eq 0 ]; then
+	echo "ERROR: could not get geni key; aborting!"
+	exit 1
     fi
-else
-	HAS_GENI_KEY=1
 fi
 if [ ! -e $OURDIR/geni.certificate ]; then
     geni-get certificate > $OURDIR/geni.certificate
     cat $OURDIR/geni.certificate | grep -q END\ CERTIFICATE
-    if [ $? -eq 0 ]; then
-	HAS_GENI_CERT=1
-    else
-	HAS_GENI_CERT=0
+    if [ ! $? -eq 0 ]; then
+	echo "ERROR: could not get geni cert; aborting!"
+	exit 1
     fi
-else
-    HAS_GENI_CERT=1
 fi
 
 if [ ! -e /root/.ssl/encrypted.pem ]; then
@@ -157,9 +226,8 @@ if [ ! -e /root/.ssl/encrypted.pem ]; then
 fi
 
 if [ ! -e $OURDIR/manifests.xml ]; then
-    if [ $HAS_GENI_CERT -eq 1 ]; then
-	python $DIRNAME/getmanifests.py $OURDIR/manifests
-    else
+    $PYTHON $DIRNAME/getmanifests.py $OURDIR/manifests
+    if [ ! $? -eq 0 ]; then
 	# Fall back to geni-get
 	echo "WARNING: falling back to getting manifest from AM, not Portal -- multi-site experiments will not work fully!"
 	geni-get manifest > $OURDIR/manifests.0.xml
@@ -175,11 +243,11 @@ if [ ! -e $OURDIR/decrypted_admin_pass -a -s $OURDIR/encrypted_admin_pass ]; the
 fi
 
 #
-# Suck in user configuration overrides, if we haven't already
+# Suck in user parameters, if we haven't already.  This also pulls in
+# global labels.
 #
 if [ ! -e $OURDIR/parameters ]; then
-    touch $OURDIR/parameters
-    cat $OURDIR/manifests.0.xml | sed -n -e 's/^[^<]*<[^:]*:parameter>\([^<]*\)<\/[^:]*:parameter>/\1/p' > $OURDIR/parameters
+    $PYTHON $DIRNAME/manifest-to-parameters.py $OURDIR/manifests.0.xml > $OURDIR/parameters
 fi
 . $OURDIR/parameters
 
@@ -245,8 +313,6 @@ for ip in $PUBLICADDRS ; do
     PUBLICCOUNT=`expr $PUBLICCOUNT + 1`
 done
 
-
-
 #
 # Grab our topomap so we can see how many nodes we have.
 # NB: only safe to use topomap for non-fqdn things.
@@ -258,7 +324,7 @@ if [ ! -f $TOPOMAP ]; then
 
     # First try via manifest; fall back to tmcc if necessary (although
     # that will break multisite exps with >1 second cluster node(s)).
-    python2 $DIRNAME/manifest-to-topomap.py $OURDIR/manifests.0.xml > $TOPOMAP
+    $PYTHON $DIRNAME/manifest-to-topomap.py $OURDIR/manifests.0.xml > $TOPOMAP
     if [ ! $? -eq 0 ]; then
 	echo "ERROR: could not extract topomap from manifest; aborting to tmcc"
 	rm -f $TOPOMAP
@@ -382,47 +448,6 @@ if [ ! -f $OURDIR/apt-updated -a "${DO_APT_UPDATE}" = "1" ]; then
     apt-get update
     touch $OURDIR/apt-updated
 fi
-
-are_packages_installed() {
-    retval=1
-    while [ ! -z "$1" ] ; do
-	dpkg -s "$1" >/dev/null 2>&1
-	if [ ! $? -eq 0 ] ; then
-	    retval=0
-	fi
-	shift
-    done
-    return $retval
-}
-
-maybe_install_packages() {
-    if [ ! ${DO_APT_UPGRADE} -eq 0 ] ; then
-        # Just do an install/upgrade to make sure the package(s) are installed
-	# and upgraded; we want to try to upgrade the package.
-	$APTGETINSTALL $@
-	return $?
-    else
-	# Ok, check if the package is installed; if it is, don't install.
-	# Otherwise, install (and maybe upgrade, due to dependency side effects).
-	# Also, optimize so that we try to install or not install all the
-	# packages at once if none are installed.
-	are_packages_installed $@
-	if [ $? -eq 1 ]; then
-	    return 0
-	fi
-
-	retval=0
-	while [ ! -z "$1" ] ; do
-	    are_packages_installed $1
-	    if [ $? -eq 0 ]; then
-		$APTGETINSTALL $1
-		retval=`expr $retval \| $?`
-	    fi
-	    shift
-	done
-	return $retval
-    fi
-}
 
 if [ ! -f $OURDIR/apt-dist-upgraded -a "${DO_APT_DIST_UPGRADE}" = "1" ]; then
     # First, mark grub packages not to be upgraded; we don't want an

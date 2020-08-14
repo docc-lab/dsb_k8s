@@ -27,12 +27,27 @@
 # }}}
 #
 
-from urlparse import urlsplit, urlunsplit
-from urllib import splitport
-import xmlrpclib
-import M2Crypto
+import six
+try:
+    from urlparse import urlsplit, urlunsplit
+    from urllib import splitport
+    import xmlrpclib
+    import httplib
+except:
+    from urllib.parse import urlsplit, urlunsplit
+    from urllib.request import splitport
+    import xmlrpc.client as xmlrpclib
+    import http.client as httplib
+import os
+import getopt
+import sys
 import time
-import httplib
+import traceback
+import ssl
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import ExtensionOID
 
 # Debugging output.
 debug           = 0
@@ -65,16 +80,21 @@ if "DEFAULTAUTHENTICATE" not in globals():
 
 authenticate=DEFAULTAUTHENTICATE
 
+verify = False
+cacertificate = None
+
+myprint = six.print_
+
 if "Usage" not in dir():
     def Usage():
-        print "usage: " + sys.argv[ 0 ] + " [option...]"
-        print "Options:"
+        myprint("usage: " + sys.argv[ 0 ] + " [option...]")
+        myprint("Options:")
         BaseOptions()
         pass
     pass
 
 def BaseOptions():
-    print """
+    myprint("""
     -a file, --admincredentials=file    read admin credentials from file
     -A, --authenticated                 authenticate client
     -c file, --credentials=file         read self-credentials from file
@@ -86,18 +106,20 @@ def BaseOptions():
     -l uri, --sa=uri                    specify uri of slice authority
                                             [default: local]
     -m uri, --cm=uri                    specify uri of component manager
-                                            [default: local]"""
+                                            [default: local]""")
     if "ACCEPTSLICENAME" in globals():
-        print """    -n name, --slicename=name           specify human-readable name of slice
-                                            [default: mytestslice]"""
+        myprint("""    -n name, --slicename=name           specify human-readable name of slice
+                                            [default: mytestslice]""")
         pass
-    print """    -p file, --passphrase=file          read passphrase from file
+    myprint("""    -p file, --passphrase=file          read passphrase from file
                                             [default: ~/.ssl/password]
     -r file, --read-commands=file       specify additional configuration file
     -s file, --slicecredentials=file    read slice credentials from file
                                             [default: query from SA]
     -S file, --speaksfor=file           read speaksfor credential from file
-    -U, --unauthenticated               do not authenticate client"""
+    -U, --unauthenticated               do not authenticate client
+        --verify                        enable server verification
+        --cacertificate=file            read CA certificate from file""")
     pass
 
 try:
@@ -108,10 +130,10 @@ try:
                                          "slicename=", "passphrase=",
                                          "read-commands=", "slicecredentials=",
                                          "speaksfor=", "unauthenticated",
-                                         "delete" ] )
+                                         "delete", "verify", "cacertificate=" ] )
 
-except getopt.GetoptError, err:
-    print >> sys.stderr, str( err )
+except getopt.GetoptError:
+    myprint(str(sys.exc_info()[1]),file=sys.stderr)
     Usage()
     sys.exit( 1 )
 
@@ -164,10 +186,30 @@ for opt, arg in opts:
         authenticate=0
     elif opt in ( "--delete" ):
         DELETE = 1
+    elif opt in ( "--verify" ):
+        verify = True
+    elif opt in ("--cacertificate"):
+        cacertificate = arg
 
 # try to load a cert even if we're not planning to authenticate, since we
 # can use it to construct default authority locations
-cert = M2Crypto.X509.load_cert( CERTIFICATE )
+certdata = None
+try:
+    fd = open(CERTIFICATE)
+    certdata = fd.read()
+    fd.close()
+except IOError:
+    myprint('Error reading certificate file %s: %s' % (CERTIFICATE,sys.exc_info()[1].strerror))
+cert = None
+try:
+    cert = x509.load_pem_x509_certificate(six.b(certdata),default_backend())
+except Exception:
+    myprint('Error loading certificate: %s' % (str(sys.exc_info()[1])))
+
+if verify and cacertificate is not None:
+    if not os.access(cacertificate, os.R_OK):
+        myprint("CA Certificate cannot be accessed: " + cacertificate)
+        sys.exit(-1);
 
 # XMLRPC server: use www.emulab.net for the clearinghouse.
 XMLRPC_SERVER   = { "ch" : "www.emulab.net", "sr" : "www.emulab.net" }
@@ -175,27 +217,33 @@ SERVER_PATH = { "ch" : ":12369/protogeni/xmlrpc/",
                 "sr" : ":12370/protogeni/pubxmlrpc/" }
 
 try:
-    extension = cert.get_ext("authorityInfoAccess")
-    val = extension.get_value()
-    if val.find('URI:') > 0:
-        url = val[val.find('URI:')+4:]
-	url = url.rstrip()
-	# strip trailing sa
-	if url.endswith('/sa') > 0:
-	    url = url[:-2]
-    	    pass
-	scheme, netloc, path, query, fragment = urlsplit(url)
+    descriptors = cert.extensions.get_extension_for_oid(
+        ExtensionOID.AUTHORITY_INFORMATION_ACCESS).value
+    url = None
+    for d in descriptors:
+        if d.access_method.dotted_string == '2.25.305821105408246119474742976030998643995':
+            url = d.access_location.value
+            break
+    if url:
+        url = url.rstrip()
+        # strip trailing sa
+        if url.endswith('/sa') > 0:
+            url = url[:-2]
+        scheme, netloc, path, query, fragment = urlsplit(url)
         host,port = splitport(netloc)
-	XMLRPC_SERVER["default"] = host
+        XMLRPC_SERVER["default"] = host
         if port:
-	    path = ":" + port + path
-            pass
+            path = ":" + port + path
         SERVER_PATH["default"] = path
-except LookupError, err:
+except Exception:
+    if debug:
+        myprint("Warning: error getting authInfoAccess extension value:")
+        traceback.print_exc()
     pass
 
 if "default" not in XMLRPC_SERVER:
-    XMLRPC_SERVER["default"] = cert.get_issuer().CN
+    XMLRPC_SERVER["default"] = cert.issuer.get_attributes_for_oid(
+        NameOID.COMMON_NAME)[0].value
     SERVER_PATH ["default"] = ":443/protogeni/xmlrpc/"
 pass
 
@@ -213,33 +261,25 @@ else:
 DOMAIN   = HOSTNAME[HOSTNAME.find('.')+1:]
 SLICEURN = "urn:publicid:IDN+" + DOMAIN + "+slice+" + SLICENAME
 
+# If the passphrase file exists, read it:
+passphrase = None
+if os.path.exists(PASSPHRASEFILE):
+    try:
+        passphrase = open(PASSPHRASEFILE).readline()
+        passphrase = passphrase.strip()
+        if passphrase == '':
+            myprint('Passphrase file empty; you may be prompted')
+            passphrase = None
+    except IOError:
+        myprint('Error reading passphrase file %s: %s' % (
+            PASSPHRASEFILE,sys.exc_info()[1].strerror))
+else:
+    if debug:
+        myprint('Passphrase file %s does not exist' % (PASSPHRASEFILE))
+
 def Fatal(message):
-    print >> sys.stderr, message
+    myprint(message,file=sys.stderr)
     sys.exit(1)
-
-def PassPhraseCB(v, prompt1='Enter passphrase:', prompt2='Verify passphrase:'):
-    """Acquire the encrypted certificate passphrase by reading a file
-    or prompting the user.
-
-    This is an M2Crypto callback. If the passphrase file exists and is
-    readable, use it. If the passphrase file does not exist or is not
-    readable, delegate to the standard M2Crypto passphrase
-    callback. Return the passphrase.
-    """
-    if os.path.exists(PASSPHRASEFILE):
-        try:
-            passphrase = open(PASSPHRASEFILE).readline()
-            passphrase = passphrase.strip()
-            return passphrase
-        except IOError, e:
-            print 'Error reading passphrase file %s: %s' % (PASSPHRASEFILE,
-                                                            e.strerror)
-    else:
-        if debug:
-            print 'passphrase file %s does not exist' % (PASSPHRASEFILE)
-    # Prompt user if PASSPHRASEFILE does not exist or could not be read.
-    from M2Crypto.util import passphrase_callback
-    return passphrase_callback(v, prompt1, prompt2)
 
 def geni_am_response_handler(method, method_args):
     """Handles the GENI AM responses, which are different from the
@@ -300,23 +340,28 @@ def do_method(module, method, params, URI=None, quiet=False, version=None,
     url = urlsplit(URI, "https")
 
     if debug:
-        print str( url ) + " " + method
+        myprint(str( url ) + " " + method)
 
     if url.scheme == "https":
-        if authenticate and not os.path.exists(CERTIFICATE):
+        if authenticate and not cert:
             if not quiet:
-                print >> sys.stderr, "error: missing emulab certificate: " + CERTIFICATE
+                myprint("error: missing emulab certificate: " + CERTIFICATE,file=sys.stderr)
             return (-1, None)
 
         port = url.port if url.port else 443
 
-        ctx = M2Crypto.SSL.Context("sslv23")
+        ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         if authenticate:
-            ctx.load_cert_chain(CERTIFICATE, CERTIFICATE, PassPhraseCB)
-        ctx.set_verify(M2Crypto.SSL.verify_none, 16)
-        ctx.set_allow_unknown_ca(0)
-    
-        server = M2Crypto.httpslib.HTTPSConnection( url.hostname, port, ssl_context = ctx )
+            ctx.load_cert_chain(CERTIFICATE,password=passphrase)
+        if not verify:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+        else:
+            if cacertificate:
+                ctx.load_verify_locations(cafile=cacertificate)
+            ctx.verify_mode = ssl.CERT_REQUIRED
+
+        server = httplib.HTTPSConnection( url.hostname, port, context = ctx )
     elif url.scheme == "http":
         port = url.port if url.port else 80
         server = httplib.HTTPConnection( url.hostname, port )
@@ -339,32 +384,34 @@ def do_method(module, method, params, URI=None, quiet=False, version=None,
             response = server.getresponse()
             if response.status == 503:
                 if not quiet:
-                    print >> sys.stderr, "Will try again in a moment. Be patient!"
+                    myprint("Will try again in a moment. Be patient!",file=sys.stderr)
                 time.sleep(5.0)
                 continue
             elif response.status != 200:
                 if not quiet:
-                    print >> sys.stderr, str(response.status) + " " + response.reason
+                    myprint(str(response.status) + " " + response.reason,file=sys.stderr)
                 return (-1,None)
             response = xmlrpclib.loads( response.read() )[ 0 ][ 0 ]
             break
-        except httplib.HTTPException, e:
-            if not quiet: print >> sys.stderr, e
+        except httplib.HTTPException:
+            if not quiet: myprint(sys.exc_info()[1],file=sys.stderr)
             return (-1, None)
-        except xmlrpclib.Fault, e:
+        except xmlrpclib.Fault:
+            e = sys.exc_info()[1]
             if e.faultCode == 503:
-                print >> sys.stderr, e.faultString + " Retrying\n";
+                myprint(e.faultString + " Retrying\n",file=sys.stderr)
                 time.sleep(5.0)
                 continue;
-            if not quiet: print >> sys.stderr, e.faultString
+            if not quiet: myprint(e.faultString,file=sys.stderr)
             return (-1, None)
-        except M2Crypto.SSL.Checker.WrongHost, e:
+        except ssl.CertificateError:
+            e = sys.exc_info()[1]
             if not quiet:
-                print >> sys.stderr, "Warning: certificate host name mismatch."
-                print >> sys.stderr, "Please consult:"
-                print >> sys.stderr, "    http://www.protogeni.net/trac/protogeni/wiki/HostNameMismatch"            
-                print >> sys.stderr, "for recommended solutions."
-                print >> sys.stderr, e
+                myprint("Warning: possible certificate host name mismatch.",file=sys.stderr)
+                myprint("Please consult:",file=sys.stderr)
+                myprint("    http://www.protogeni.net/trac/protogeni/wiki/HostNameMismatch",file=sys.stderr)
+                myprint("for recommended solutions.",file=sys.stderr)
+                myprint(e,file=sys.stderr)
                 pass
             return (-1, None)
 
@@ -374,7 +421,7 @@ def do_method(module, method, params, URI=None, quiet=False, version=None,
     # Dictionary, hence the code below. 
     # 
     if response[ "code" ] and len(response["output"]):
-        if not quiet: print >> sys.stderr, response["output"] + ":",
+        if not quiet: myprint(response["output"] + ":",file=sys.stderr)
         pass
 
     rval = response["code"]
@@ -408,7 +455,7 @@ def do_method_retry(suffix, method, params):
   rval, response = do_method(suffix, method, params)
   while count > 0 and response and response["code"] == 14:
       count = count - 1
-      print " Will try again in a few seconds\n"
+      myprint(" Will try again in a few seconds\n")
       time.sleep(5.0)
       rval, response = do_method(suffix, method, params)
   return (rval, response)
@@ -416,7 +463,7 @@ def do_method_retry(suffix, method, params):
 def resolve_slice( name, selfcredential ):
     if slicecredentialfile:
         myslice = {}
-	myslice["urn"] = SLICEURN
+        myslice["urn"] = SLICEURN
         return myslice
     params = {}
     params["credential"] = mycredential

@@ -30,17 +30,18 @@
 
 #
 #
+import six
 import sys
 import pwd
 import getopt
 import os
 import re
-import xmlrpclib
-from M2Crypto import X509
 import os.path
 
 dirname = os.path.abspath(os.path.dirname(sys.argv[0]))
-execfile("%s/test-common.py" % (dirname,))
+exec(open("%s/test-common.py" % (dirname,)).read())
+
+myprint = six.print_
 
 #
 # Convert the certificate into a credential.
@@ -58,7 +59,7 @@ if rval:
     Fatal("Could not get manifests")
     pass
 if len(sys.argv) < 2:
-    print response["value"]
+    myprint(response["value"])
 else:
     f = open("%s.xml" % (sys.argv[1],),'w')
     value = response["value"]["manifests"]

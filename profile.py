@@ -180,38 +180,8 @@ for i in range(0,params.nodeCount):
 
 for nname in nodes.keys():
     rspec.addResource(nodes[nname])
-if mgmtlan:
-    rspec.addResource(mgmtlan)
 for datalan in datalans:
     rspec.addResource(datalan)
-
-#
-# Add our parameters to the request so we can get their values to our nodes.
-# The nodes download the manifest(s), and the setup scripts read the parameter
-# values when they run.
-#
-class Parameters(RSpec.Resource):
-    def _write(self, root):
-        ns = "{http://www.protogeni.net/resources/rspec/ext/johnsond/1}"
-        paramXML = "%sparameter" % (ns,)
-        
-        el = ET.SubElement(root,"%sprofile_parameters" % (ns,))
-
-        param = ET.SubElement(el,paramXML)
-        param.text = 'HEAD="node-0"'
-        param = ET.SubElement(el,paramXML)
-        if mgmtlan:
-            param.text = 'MGMTLAN="%s"' % (mgmtlan.client_id)
-        else:
-            param.text = 'MGMTLAN="%s"' % (datalans[0].client_id)
-        param = ET.SubElement(el,paramXML)
-        param.text = 'DATALANS="%s"' % (' '.join(map(lambda(lan): lan.client_id,datalans)))
-
-        return el
-    pass
-
-parameters = Parameters()
-rspec.addResource(parameters)
 
 class EmulabEncrypt(RSpec.Resource):
     def _write(self, root):
