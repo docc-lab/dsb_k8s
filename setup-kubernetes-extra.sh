@@ -58,8 +58,8 @@ map \$http_upgrade \$connection_upgrade {
 server {
         listen 8080 ssl;
         listen [::]:8080 ssl;
-        ssl_certificate_key ${certpath};
-        ssl_certificate ${keypath};
+        ssl_certificate ${certpath};
+        ssl_certificate_key ${keypath};
         server_name _;
         location / {
                  proxy_set_header Host \$host;
