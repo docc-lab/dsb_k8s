@@ -78,8 +78,9 @@ done
 # the build-key* scripts don't want it set -- they set it to the first arg,
 # and behave badly if it IS set.
 unset KEY_CN
-./build-key-server $HEAD
-cp -p $KEY_DIR/$HEAD.crt $KEY_DIR/$HEAD.key $KEY_DIR/ca.crt $EASY_RSA
+hf=`getfqdn $HEAD`
+./build-key-server $hf
+cp -p $KEY_DIR/$hf.crt $KEY_DIR/$hf.key $KEY_DIR/ca.crt $EASY_RSA
 
 ./build-dh
 cp -p $KEY_DIR/dh2048.pem $EASY_RSA
@@ -91,7 +92,7 @@ cp -p $KEY_DIR/dh2048.pem $EASY_RSA
 for node in $NODES ; do
     nf=`getfqdn $node`
     export KEY_CN="$nf"
-    ./build-key $node
+    ./build-key $nf
 done
 
 unset KEY_COUNTRY
