@@ -86,19 +86,6 @@ params = pc.bindParameters()
 #
 pc.verifyParameters()
 
-detailedParamAutoDocs = ''
-for param in pc._parameterOrder:
-    if not pc._parameters.has_key(param):
-        continue
-    detailedParamAutoDocs += \
-      """
-  - *%s*
-
-    %s
-    (default value: *%s*)
-      """ % (pc._parameters[param]['description'],pc._parameters[param]['longDescription'],pc._parameters[param]['defaultValue'])
-    pass
-
 tourDescription = \
   "This profile creates a kubernetes cluster with kubespray.  When you click the Instantiate button, you'll be presented with a list of parameters that you can change to control what your kubernetes cluster will look like; read the parameter documentation on that page (or in the Instructions)."
 
@@ -117,7 +104,7 @@ Once the dashboard is available, you can login with either basic or token authen
   - `basic`: username `admin`, password `{password-adminPass}`
   - `token`: copy the token from http://{host-node-0}:7999/admin-token.txt (this file is located on `node-0` in `/root/setup/admin-token.txt`)
 
-(To provide secure dashboard access, we run a `kube-proxy` instance that listens on localhost:8888 and accepts all incoming hosts, and export that via nginx proxy listening on `{host-node-0}:8080`.  We also create an `admin` `serviceaccount` in the `default` namespace
+(To provide secure dashboard access, we run a `kube-proxy` instance that listens on localhost:8888 and accepts all incoming hosts, and export that via nginx proxy listening on `{host-node-0}:8080`.  We also create an `admin` `serviceaccount` in the `default` namespace, and that is the serviceaccount associated with the token auth option mentioned just above.)
 
 Kubernetes credentials are in `~/.kube/config`, or in `/root/.kube/config`, as you'd expect.
 
@@ -145,7 +132,6 @@ tour.Description(IG.Tour.TEXT,tourDescription)
 tour.Instructions(IG.Tour.MARKDOWN,tourInstructions)
 rspec.addTour(tour)
 
-mgmtlan = None
 datalans = []
 
 datalan = RSpec.LAN("datalan-1")
