@@ -110,7 +110,6 @@ kube_apiserver_node_port_range: 2000-36767
 kubeadm_enabled: true
 kubelet_custom_flags: [--allowed-unsafe-sysctls=net.*]
 dns_min_replicas: 1
-helm_enabled: true
 dashboard_enabled: true
 EOF
 if [ -n "${DOCKER_VERSION}" ]; then
@@ -123,10 +122,13 @@ if [ -n "${K8S_VERSION}" ]; then
 kube_version: ${K8S_VERSION}
 EOF
 fi
+
+# Modify in both places, to account for mutiple kubespray versions.
+echo "helm_enabled: true" >> $INVDIR/group_vars/all/all.yml
+echo "helm_enabled: true" >> $INVDIR/group_vars/k8s-cluster/addons.yml
 if [ -n "${HELM_VERSION}" ]; then
-    cat <<EOF >> $INVDIR/group_vars/all/all.yml
-helm_version: ${HELM_VERSION}
-EOF
+    echo "helm_version: ${HELM_VERSION}" >> $INVDIR/group_vars/all/all.yml
+    echo "helm_version: ${HELM_VERSION}" >> $INVDIR/group_vars/k8s-cluster/addons.yml
 fi
 
 DOCKOPTS='--insecure-registry={{ kube_service_addresses }}  {{ docker_log_opts }}'
