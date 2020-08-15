@@ -128,6 +128,11 @@ pc.defineParameter(
     longDescription="A []-enclosed, comma-separated list of flags.  For instance, `[--allowed-unsafe-sysctls=net.*]`.",
     advanced=True)
 pc.defineParameter(
+    "kubeletMaxPods","Kubelet Max Pods",
+    portal.ParameterType.INTEGER,0,
+    longDescription="An integer max pods limit; 0 allows Kubernetes to use its default value (currently is 110; see https://kubespray.io/#/docs/vars and look for `kubelet_max_pods`).  Do not change this unless you know what you are doing.",
+    advanced=True)
+pc.defineParameter(
     "sslCertType","SSL Certificate Type",
     portal.ParameterType.STRING,"self",
     [("none","None"),("self","Self-Signed"),("letsencrypt","Let's Encrypt")],
@@ -199,15 +204,16 @@ rspec.addTour(tour)
 
 datalans = []
 
-datalan = RSpec.LAN("datalan-1")
-if params.linkSpeed > 0:
-    datalan.bandwidth = int(params.linkSpeed)
-if params.multiplexLans:
-    datalan.link_multiplexing = True
-    datalan.best_effort = True
-    # Need this cause LAN() sets the link type to lan, not sure why.
-    datalan.type = "vlan"
-datalans.append(datalan)
+if params.nodeCount > 1:
+    datalan = RSpec.LAN("datalan-1")
+    if params.linkSpeed > 0:
+        datalan.bandwidth = int(params.linkSpeed)
+    if params.multiplexLans:
+        datalan.link_multiplexing = True
+        datalan.best_effort = True
+        # Need this cause LAN() sets the link type to lan, not sure why.
+        datalan.type = "vlan"
+    datalans.append(datalan)
 
 nodes = dict({})
 

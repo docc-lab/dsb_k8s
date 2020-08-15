@@ -137,6 +137,10 @@ if [ -n "$KUBELETCUSTOMFLAGS" ]; then
     echo "kubelet_custom_flags: $KUBELETCUSTOMFLAGS" \
 	>> $INVDIR/group_vars/all/all.yml
 fi
+if [ -n "$KUBELETMAXPODS" -a $KUBELETMAXPODS -gt 0 ]; then
+    echo "kubelet_max_pods: $KUBELETMAXPODS" \
+        >> $INVDIR/group_vars/all/all.yml
+fi
 
 if [ "$KUBENETWORKPLUGIN" = "calico" ]; then
     cat <<EOF >> $INVDIR/group_vars/all/all.yml
