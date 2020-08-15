@@ -36,12 +36,7 @@ pc = portal.Context()
 pc.defineParameter(
     "nodeCount","Number of Nodes",
     portal.ParameterType.INTEGER,3,
-    longDescription="Number of nodes in your k8s cluster.  Should be either 1, or >= 3.")
-#pc.defineParameter(
-#    "k8sInstaller","Kubernetes Install",
-#    portal.ParameterType.STRING,"default",
-#    [("default","default"),("kubeadm","kubeadm"),("kubespray","kubespray")],
-#    longDescription="")
+    longDescription="Number of nodes in your kubernetes cluster.  Should be either 1, or >= 3.")
 pc.defineParameter(
     "nodeType","Hardware Type",
     portal.ParameterType.NODETYPE,"",
@@ -61,6 +56,76 @@ pc.defineParameter(
     "multiplexLans", "Multiplex Networks",
     portal.ParameterType.BOOLEAN,False,
     longDescription="Multiplex any networks over physical interfaces using VLANs.  Some physical machines have only a single experiment network interface, so if you want multiple links/LANs, you have to enable multiplexing.  Currently, if you select this option.",
+    advanced=True)
+
+pc.defineParameter(
+    "kubesprayRepo","Kubespray Git Repository",
+    portal.ParameterType.STRING,
+    "https://github.com/kubernetes-incubator/kubespray.git",
+    longDescription="Do not change this value unless you know what you are doing!  Changing would only be necessary if you have a modified fork of Kubespray.  This must be a publicly-accessible repository.",
+    advanced=True)
+pc.defineParameter(
+    "kubesprayVersion","Kubespray Version",
+    portal.ParameterType.STRING,"release-2.13",
+    longDescription="A tag or commit-ish value; we will run `git checkout <value>`.  The default value is the most recent stable value we have tested.  You should only change this if you need a new feature only available on `master`, or an old feature from a prior release.",
+    advanced=True)
+pc.defineParameter(
+    "kubesprayUseVirtualenv","Kubespray VirtualEnv",
+    portal.ParameterType.BOOLEAN,True,
+    longDescription="Select if you want Ansible installed in a python virtualenv; deselect to use the system-packaged Ansible.",
+    advanced=True)
+pc.defineParameter(
+    "kubeVersion","Kubernetes Version",
+    portal.ParameterType.STRING,"",
+    longDescription="A specific release of Kubernetes to install (e.g. v1.16.3); if left empty, Kubespray will choose its current stable version and install that.  You can check for Kubespray-known releases at https://github.com/kubernetes-sigs/kubespray/blob/release-2.13/roles/download/defaults/main.yml (or if you're using a different Kubespray release, choose the corresponding feature release branch in that URL).  You can use unsupported or unknown versions, however, as long as the binaries actually exist.",
+    advanced=True)
+pc.defineParameter(
+    "helmVersion","Helm Version",
+    portal.ParameterType.STRING,"",
+    longDescription="A specific release of Helm to install (e.g. v2.12.3); if left empty, Kubespray will choose its current stable version and install that.  Note that the version you pick must exist as a tag in this Docker image repository: https://hub.docker.com/r/lachlanevenson/k8s-helm/tags .",
+    advanced=True)
+pc.defineParameter(
+    "dockerVersion","Docker Version",
+    portal.ParameterType.STRING,"",
+    longDescription="A specific Docker version to install; if left empty, Kubespray will choose its current stable version and install that.  As explained in the Kubespray documentation (https://github.com/kubernetes-sigs/kubespray/blob/master/docs/vars.md), this value must be one of those listed at, e.g. https://github.com/kubernetes-sigs/kubespray/blob/release-2.13/roles/container-engine/docker/vars/ubuntu-amd64.yml .",
+    advanced=True)
+pc.defineParameter(
+    "kubeNetworkPlugin","Kubernetes Network Plugin",
+    portal.ParameterType.STRING,"calico",
+    [("calico","Calico"),("flannel","Flannel"),("weave","Weave"),
+     ("canal","Canal")],
+    longDescription="Choose the primary kubernetes network plugin.",
+    advanced=True)
+pc.defineParameter(
+    "kubeEnableMultus","Enable Multus Network Meta Plugin",
+    portal.ParameterType.BOOLEAN,False,
+    longDescription="Select to enable the Multus (https://github.com/kubernetes-sigs/kubespray/blob/master/docs/multus.md) CNI meta plugin.  Multus provides multiple network interface support to pods.",
+    advanced=True)
+pc.defineParameter(
+    "kubeProxyMode","Kube Proxy Mode",
+    portal.ParameterType.STRING,"ipvs",
+    [("iptables","iptables"),("ipvs","ipvs")],
+    longDescription="Choose the mode for kube-proxy (comparison: https://www.projectcalico.org/comparing-kube-proxy-modes-iptables-or-ipvs/).",
+    advanced=True)
+pc.defineParameter(
+    "kubePodsSubnet","Kubernetes Pods Subnet",
+    portal.ParameterType.STRING,"192.168.0.0/17",
+    longDescription="The subnet containing pod addresses.",
+    advanced=True)
+pc.defineParameter(
+    "kubeServiceAddresses","Kubernetes Service Addresses",
+    portal.ParameterType.STRING,"192.168.128.0/17",
+    longDescription="The subnet containing service addresses.",
+    advanced=True)
+pc.defineParameter(
+    "kubeFeatureGates","Kubernetes Feature Gate List",
+    portal.ParameterType.STRING,"",
+    longDescription="A []-enclosed, comma-separated list of features.  For instance, `[SCTPSupport=true]`.",
+    advanced=True)
+pc.defineParameter(
+    "kubeletCustomFlags","Kubelet Custom Flags List",
+    portal.ParameterType.STRING,"",
+    longDescription="A []-enclosed, comma-separated list of flags.  For instance, `[--allowed-unsafe-sysctls=net.*]`.",
     advanced=True)
 pc.defineParameter(
     "sslCertType","SSL Certificate Type",

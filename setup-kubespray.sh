@@ -23,16 +23,16 @@ cd $OURDIR
 if [ -e kubespray ]; then
     rm -rf kubespray
 fi
-git clone $KUBESPRAY_REPO kubespray
-if [ -n "$KUBESPRAY_VERSION" ]; then
-    cd kubespray && git checkout "$KUBESPRAY_VERSION" && cd ..
+git clone $KUBESPRAYREPO kubespray
+if [ -n "$KUBESPRAYVERSION" ]; then
+    cd kubespray && git checkout "$KUBESPRAYVERSION" && cd ..
 fi
 
 #
 # Get Ansible and the kubespray python reqs installed.
 #
 maybe_install_packages ${PYTHON}
-if [ $KUBESPRAY_USE_VIRTUALENV -eq 1 ]; then
+if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
     if [ -e $KUBESPRAY_VIRTUALENV ]; then
 	. $KUBESPRAY_VIRTUALENV/bin/activate
     else
@@ -56,15 +56,15 @@ fi
 # hostname, and we don't want that.  So do it manually.  We generate
 # .ini format because it's much simpler to do in shell.
 #
-mkdir -p inventories/emulab
-cp -pR kubespray/inventory/sample/group_vars inventories/emulab
+INVDIR=inventories/kubernetes
+mkdir -p $INVDIR
+cp -pR kubespray/inventory/sample/group_vars $INVDIR
 
-INVDIR=inventories/emulab
 INV=$INVDIR/inventory.ini
 echo '[all]' > $INV
 for node in $NODES ; do
     mgmtip=`getnodeip $node $MGMTLAN`
-    dataip=`getnodeip $node $DATALANS`
+    dataip=`getnodeip $node $DATALAN`
     echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$mgmtip" >> $INV
 done
 # The first 2 nodes are kube-master.
@@ -92,45 +92,96 @@ kube-master
 kube-node
 EOF
 
+#
+# Get our basic configuration into place.
+#
 cat <<EOF >> $INVDIR/group_vars/all/all.yml
-override_system_hostname: False
+override_system_hostname: false
 disable_swap: true
-ansible_python_interpreter: /usr/bin/python2.7
+ansible_python_interpreter: $PYTHONBIN
 ansible_user: root
-ansible_become: true
-docker_iptables_enabled: true
-kube_feature_gates: [SCTPSupport=true]
-kube_network_plugin: calico
-kube_network_plugin_multus: true
-multus_version: stable
-kube_proxy_mode: iptables
-kube_pods_subnet: 192.168.0.0/17
-kube_service_addresses: 192.168.128.0/17
 kube_apiserver_node_port_range: 2000-36767
 kubeadm_enabled: true
-kubelet_custom_flags: [--allowed-unsafe-sysctls=net.*]
 dns_min_replicas: 1
 dashboard_enabled: true
 EOF
-if [ -n "${DOCKER_VERSION}" ]; then
+if [ -n "${DOCKERVERSION}" ]; then
     cat <<EOF >> $INVDIR/group_vars/all/all.yml
-docker_version: ${DOCKER_VERSION}
+docker_version: ${DOCKERVERSION}
 EOF
 fi
-if [ -n "${K8S_VERSION}" ]; then
+if [ -n "${KUBEVERSION}" ]; then
     cat <<EOF >> $INVDIR/group_vars/all/all.yml
-kube_version: ${K8S_VERSION}
+kube_version: ${KUBEVERSION}
+EOF
+fi
+if [ -n "$KUBEFEATUREGATES" ]; then
+    echo "kube_feature_gates: $KUBEFEATUREGATES" \
+	>> $INVDIR/group_vars/all/all.yml
+fi
+if [ -n "$KUBELETCUSTOMFLAGS" ]; then
+    echo "kubelet_custom_flags: $KUBELETCUSTOMFLAGS" \
+	>> $INVDIR/group_vars/all/all.yml
+fi
+
+if [ "$KUBENETWORKPLUGIN" = "calico" ]; then
+    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_network_plugin: calico
+docker_iptables_enabled: true
+EOF
+elif [ "$KUBENETWORKPLUGIN" = "flannel" ]; then
+cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_network_plugin: flannel
+EOF
+elif [ "$KUBENETWORKPLUGIN" = "weave" ]; then
+cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_network_plugin: flannel
+EOF
+elif [ "$KUBENETWORKPLUGIN" = "canal" ]; then
+cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_network_plugin: canal
 EOF
 fi
 
-# Modify in both places, to account for mutiple kubespray versions.
-echo "helm_enabled: true" >> $INVDIR/group_vars/all/all.yml
-echo "helm_enabled: true" >> $INVDIR/group_vars/k8s-cluster/addons.yml
-if [ -n "${HELM_VERSION}" ]; then
-    echo "helm_version: ${HELM_VERSION}" >> $INVDIR/group_vars/all/all.yml
-    echo "helm_version: ${HELM_VERSION}" >> $INVDIR/group_vars/k8s-cluster/addons.yml
+if [ "$KUBEENABLEMULTUS" = "1" ]; then
+cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_network_plugin_multus: true
+multus_version: stable
+EOF
 fi
 
+if [ "$KUBEPROXYMODE" = "iptables" ]; then
+    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_proxy_mode: iptables
+EOF
+elif [ "$KUBEPROXYMODE" = "ipvs" ]; then
+    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_proxy_mode: ipvs
+EOF
+fi
+
+cat <<EOF >> $INVDIR/group_vars/all/all.yml
+kube_pods_subnet: $KUBEPODSSUBNET
+kube_service_addresses: $KUBESERVICEADDRESSES
+EOF
+
+#
+# Enable helm, and stash its config bits in the right file.
+#
+grep -q helm_enabled $INVDIR/group_vars/all/all.yml
+if [ $? -eq 0 ]; then
+    HELM_INV_FILE=$INVDIR/group_vars/all/all.yml
+else
+    HELM_INV_FILE=$INVDIR/group_vars/k8s-cluster/addons.yml
+fi
+echo "helm_enabled: true" >> $HELM_INV_FILE
+if [ -n "${HELMVERSION}" ]; then
+    echo "helm_version: ${HELMVERSION}" >> $HELM_INV_FILE
+fi
+
+#
+# Add a bunch of options most people will find useful.
+#
 DOCKOPTS='--insecure-registry={{ kube_service_addresses }}  {{ docker_log_opts }}'
 for lan in $DATALANS ; do
     DOCKOPTS="--insecure-registry=`getnodeip node-0 $lan`/`getnetmaskprefix $lan` $DOCKOPTS"
@@ -152,14 +203,22 @@ kube_users:
 EOF
 #kube_api_anonymous_auth: false
 
-ansible-playbook -i inventories/emulab/inventory.ini \
+#
+# Run ansible to build our kubernetes cluster.
+#
+ansible-playbook -i $INVDIR/inventory.ini \
     kubespray/cluster.yml -b -v
 
-mkdir /root/.kube
-mkdir ~$SWAPPER/.kube
+if [ ! $? -eq 0 ]; then
+    echo "ERROR: ansible-playbook failed; check logfiles!"
+    exit 1
+fi
+
+mkdir -p /root/.kube
+mkdir -p ~$SWAPPER/.kube
 cp -p $INVDIR/artifacts/admin.conf /root/.kube/config
 cp -p $INVDIR/artifacts/admin.conf ~$SWAPPER/.kube/config
-chown $SWAPPER ~$SWAPPER/.kube/config
+chown -R $SWAPPER ~$SWAPPER/.kube
 
 kubectl wait pod -n kube-system --for=condition=Ready --all
 

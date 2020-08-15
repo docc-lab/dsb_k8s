@@ -69,15 +69,25 @@ DO_APT_DIST_UPGRADE=0
 DO_APT_UPDATE=1
 UBUNTUMIRRORHOST=""
 UBUNTUMIRRORPATH=""
-KUBESPRAY_REPO="https://github.com/kubernetes-incubator/kubespray.git"
-KUBESPRAY_USE_VIRTUALENV=1
+KUBESPRAYREPO="https://github.com/kubernetes-incubator/kubespray.git"
+KUBESPRAYUSEVIRTUALENV=1
 KUBESPRAY_VIRTUALENV=kubespray-virtualenv
-KUBESPRAY_VERSION=release-2.13
-DOCKER_VERSION=
-K8S_VERSION=
-HELM_VERSION=
+KUBESPRAYVERSION=release-2.13
+DOCKERVERSION=
+KUBEVERSION=
+HELMVERSION=
+KUBENETWORKPLUGIN="calico"
+KUBEENABLEMULTUS=0
+KUBEPROXYMODE="ipvs"
+KUBEPODSSUBNET="192.168.0.0/17"
+KUBESERVICEADDRESSES="192.168.128.0/17"
+KUBEFEATUREGATES=""
+KUBELETCUSTOMFLAGS=""
 SSLCERTTYPE="self"
 SSLCERTCONFIG="proxy"
+MGMTLAN="datalan-1"
+DATALAN="datalan-1"
+DATALANS="datalan-1"
 
 #
 # We have an 'admin' user that gets a random password that comes in from
@@ -184,6 +194,7 @@ else
     PYVERS=2
     PIP=pip
 fi
+PYTHONBIN=`which $PYTHON`
 
 ##
 ## Grab our geni creds, and create a GENI credential cert
