@@ -413,18 +413,18 @@ fi
 NODES=`cat $OURDIR/fqdn.map | cut -f1 | sort -n | xargs`
 FQDNS=`cat $OURDIR/fqdn.map | cut -f2 | sort -n | xargs`
 NODEIPS=""
+NODECOUNT=0
 for node in $NODES ; do
     ip=`grep "${node}-" /etc/hosts | cut -f1`
     NODEIPS="$NODEIPS $ip"
+    NODECOUNT=`expr $NODECOUNT + 1`
 done
 
 OTHERNODES=""
 for node in $NODES ; do
     [ "$node" = "$NODEID" ] && continue
-
     OTHERNODES="$OTHERNODES $node"
 done
-
 
 ##
 ## Setup our Ubuntu package mirror, if necessary.

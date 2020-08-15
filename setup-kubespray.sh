@@ -61,31 +61,45 @@ mkdir -p $INVDIR
 cp -pR kubespray/inventory/sample/group_vars $INVDIR
 
 INV=$INVDIR/inventory.ini
-echo '[all]' > $INV
-for node in $NODES ; do
-    mgmtip=`getnodeip $node $MGMTLAN`
-    dataip=`getnodeip $node $DATALAN`
-    echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$mgmtip" >> $INV
-done
-# The first 2 nodes are kube-master.
-echo '[kube-master]' >> $INV
-for node in `echo $NODES | cut -d ' ' -f-2` ; do
-    echo "$node" >> $INV
-done
-# The first 3 nodes are etcd.
-echo '[etcd]' >> $INV
-for node in `echo $NODES | cut -d ' ' -f-3` ; do
-    echo "$node" >> $INV
-done
-# The last 2--N nodes are kube-node, unless there is only one node.
-kubenodecount=2
-if [ "$NODES" = `echo $NODES | cut -d ' ' -f2` ]; then
-    kubenodecount=1
+if [ $NODECOUNT -gt 1 ]; then
+    echo '[all]' > $INV
+    for node in $NODES ; do
+	mgmtip=`getnodeip $node $MGMTLAN`
+	dataip=`getnodeip $node $DATALAN`
+	echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$mgmtip" >> $INV
+    done
+    # The first 2 nodes are kube-master.
+    echo '[kube-master]' >> $INV
+    for node in `echo $NODES | cut -d ' ' -f-2` ; do
+	echo "$node" >> $INV
+    done
+    # The first 3 nodes are etcd.
+    echo '[etcd]' >> $INV
+    for node in `echo $NODES | cut -d ' ' -f-3` ; do
+	echo "$node" >> $INV
+    done
+    # The last 2--N nodes are kube-node, unless there is only one node.
+    kubenodecount=2
+    if [ "$NODES" = `echo $NODES | cut -d ' ' -f2` ]; then
+	kubenodecount=1
+    fi
+    echo '[kube-node]' >> $INV
+    for node in `echo $NODES | cut -d ' ' -f${kubenodecount}-` ; do
+	echo "$node" >> $INV
+    done
+else
+    # Just use localhost.
+    cat <<EOF >> $INV
+[all]
+$HEAD ansible_host=127.0.0.1 ip=127.0.0.1 access_ip=127.0.0.1
+[kube-master]
+$HEAD
+[etcd]
+$HEAD
+[kube-node]
+$HEAD
+EOF
 fi
-echo '[kube-node]' >> $INV
-for node in `echo $NODES | cut -d ' ' -f${kubenodecount}-` ; do
-    echo "$node" >> $INV
-done
 cat <<EOF >> $INV
 [k8s-cluster:children]
 kube-master
@@ -183,9 +197,11 @@ fi
 # Add a bunch of options most people will find useful.
 #
 DOCKOPTS='--insecure-registry={{ kube_service_addresses }}  {{ docker_log_opts }}'
-for lan in $DATALANS ; do
-    DOCKOPTS="--insecure-registry=`getnodeip node-0 $lan`/`getnetmaskprefix $lan` $DOCKOPTS"
-done
+if [ $NODECOUNT -gt 1 ]; then
+    for lan in $DATALANS ; do
+	DOCKOPTS="--insecure-registry=`getnodeip node-0 $lan`/`getnetmaskprefix $lan` $DOCKOPTS"
+    done
+fi
 cat <<EOF >>$INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
 docker_dns_servers_strict: false
 kubectl_localhost: true
