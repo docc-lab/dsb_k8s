@@ -88,10 +88,53 @@ if [ $NODECOUNT -gt 1 ]; then
 	echo "$node" >> $INV
     done
 else
-    # Just use localhost.
+    # We cannot use localhost; we have to use a dummy device, and that
+    # works fine.  We need to fix things up because there is nothing in
+    # /etc/hosts, nor have ssh keys been scanned and placed in
+    # known_hosts.
+
+    #echo "127.0.0.1 $HEAD" >> /etc/hosts
+    #echo "127.0.0.1 $HEAD" >> /etc/hosts.tail
+    #ssh-keyscan $HEAD >> ~/.ssh/known_hosts
+    #ssh-keyscan 127.0.0.1 >> ~/.ssh/known_hosts
+    #chmod 600 ~/.ssh/known_hosts
+    ip=10.10.1.1
+    nm=255.255.0.0
+    cidr=$ip/16
+    echo "$ip $HEAD" >> /etc/hosts
+    ip link add type dummy name dummy0
+    ip addr add $cidr dev dummy0
+    ip link set dummy0 up
+    if [ $DISTRIB_MAJOR -lt 18 ]; then
+	cat <<EOF > /etc/network/interfaces.d/kube-single-node.conf
+auto dummy0
+iface dummy0 inet static
+    address $cidr
+    pre-up ip link add dummy0 type dummy
+EOF
+    else
+	cat <<EOF >/etc/systemd/network/dummy0.netdev
+[NetDev]
+Name=dummy0
+Kind=type
+EOF
+	cat <<EOF >/etc/systemd/network/dummy0.network
+[Match]
+Name=dummy0
+
+[Network]
+DHCP=no
+Address=$cidr
+IPForward=yes
+EOF
+    fi
+
+    ssh-keyscan $HEAD >> ~/.ssh/known_hosts
+    ssh-keyscan $ip >> ~/.ssh/known_hosts
+
     cat <<EOF >> $INV
 [all]
-$HEAD ansible_host=127.0.0.1 ip=127.0.0.1 access_ip=127.0.0.1
+$HEAD ansible_host=$ip ip=$ip access_ip=$ip
 [kube-master]
 $HEAD
 [etcd]
