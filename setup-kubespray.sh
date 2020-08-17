@@ -92,12 +92,6 @@ else
     # works fine.  We need to fix things up because there is nothing in
     # /etc/hosts, nor have ssh keys been scanned and placed in
     # known_hosts.
-
-    #echo "127.0.0.1 $HEAD" >> /etc/hosts
-    #echo "127.0.0.1 $HEAD" >> /etc/hosts.tail
-    #ssh-keyscan $HEAD >> ~/.ssh/known_hosts
-    #ssh-keyscan 127.0.0.1 >> ~/.ssh/known_hosts
-    #chmod 600 ~/.ssh/known_hosts
     ip=10.10.1.1
     nm=255.255.0.0
     cidr=$ip/16
@@ -105,6 +99,7 @@ else
     ip link add type dummy name dummy0
     ip addr add $cidr dev dummy0
     ip link set dummy0 up
+    DISTRIB_MAJOR=`. /etc/lsb-release && echo $DISTRIB_RELEASE | cut -d. -f1`
     if [ $DISTRIB_MAJOR -lt 18 ]; then
 	cat <<EOF > /etc/network/interfaces.d/kube-single-node.conf
 auto dummy0
