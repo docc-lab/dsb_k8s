@@ -163,7 +163,7 @@ docker_version: ${DOCKERVERSION}
 EOF
 fi
 if [ -n "${KUBEVERSION}" ]; then
-    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+    cat <<EOF >> $INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
 kube_version: ${KUBEVERSION}
 EOF
 fi
