@@ -81,6 +81,7 @@ KUBEENABLEMULTUS=0
 KUBEPROXYMODE="ipvs"
 KUBEPODSSUBNET="192.168.0.0/17"
 KUBESERVICEADDRESSES="192.168.128.0/17"
+KUBEACCESSIP="mgmt"
 KUBEFEATUREGATES=""
 KUBELETCUSTOMFLAGS=""
 KUBELETMAXPODS=0
@@ -539,6 +540,13 @@ getfqdn() {
     n=$1
     fqdn=`cat $OURDIR/fqdn.map | grep -E "$n\s" | cut -f2`
     echo $fqdn
+}
+
+getcontrolip() {
+    n=$1
+    fqdn=`getfqdn $n`
+    ip=`host -4 $fqdn | sed -nre 's/.* has address ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)$/\1/p'`
+    echo $ip
 }
 
 service_enable() {

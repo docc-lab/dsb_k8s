@@ -66,7 +66,12 @@ if [ $NODECOUNT -gt 1 ]; then
     for node in $NODES ; do
 	mgmtip=`getnodeip $node $MGMTLAN`
 	dataip=`getnodeip $node $DATALAN`
-	echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$mgmtip" >> $INV
+	if [ "$KUBEACCESSIP" = "mgmt" ]; then
+	    accessip="$mgmtip"
+	else
+	    accessip=`getcontrolip $node`
+	fi
+	echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$accessip" >> $INV
     done
     # The first 2 nodes are kube-master.
     echo '[kube-master]' >> $INV
@@ -126,6 +131,12 @@ EOF
 
     ssh-keyscan $HEAD >> ~/.ssh/known_hosts
     ssh-keyscan $ip >> ~/.ssh/known_hosts
+
+    if [ "$KUBEACCESSIP" = "mgmt" ]; then
+	accessip="$ip"
+    else
+	accessip=`getcontrolip $HEAD`
+    fi
 
     cat <<EOF >> $INV
 [all]

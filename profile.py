@@ -118,6 +118,12 @@ pc.defineParameter(
     longDescription="The subnet containing service addresses.",
     advanced=True)
 pc.defineParameter(
+    "kubeAccessIp","Kubespray Access IP",
+    portal.ParameterType.STRING,"mgmt",
+    [("mgmt","mgmt"),("external","external")],
+    longDescription="If you choose external here, your NodePorts and LoadBalancers will be able to allocate ports on the public control net interface of your nodes.",
+    advanced=True)
+pc.defineParameter(
     "kubeFeatureGates","Kubernetes Feature Gate List",
     portal.ParameterType.STRING,"",
     longDescription="A []-enclosed, comma-separated list of features.  For instance, `[SCTPSupport=true]`.",
