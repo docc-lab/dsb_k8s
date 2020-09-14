@@ -64,7 +64,7 @@ fi
 # hostname, and we don't want that.  So do it manually.  We generate
 # .ini format because it's much simpler to do in shell.
 #
-INVDIR=inventories/kubernetes
+INVDIR=$OURDIR/inventories/kubernetes
 mkdir -p $INVDIR
 cp -pR kubespray/inventory/sample/group_vars $INVDIR
 
