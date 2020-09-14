@@ -19,6 +19,14 @@ fi
 
 logtstart "kubespray"
 
+# First, we need yq.
+are_packages_installed yq
+if [ ! $? -eq 1 ]; then
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
+    add-apt-repository -y ppa:rmescandon/yq
+    maybe_install_packages yq
+fi
+
 cd $OURDIR
 if [ -e kubespray ]; then
     rm -rf kubespray
@@ -273,21 +281,61 @@ EOF
 #kube_api_anonymous_auth: false
 
 #
+# Add MetalLB support.
+#
+METALLB_PLAYBOOK=
+if [ "$KUBEDOMETALLB" = "1" -a $PUBLICADDRCOUNT -gt 0 ]; then
+    echo "kube_proxy_strict_arp: true" >> $INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
+    METALLB_PLAYBOOK=contrib/metallb/metallb.yml
+    cat contrib/metallb/roles/provision/defaults/main.yml >>$INVDIR/groups_vars/k8s-cluster/addons.yml
+    echo "metallb:" >/tmp/metallb.yml
+    mi=0
+    for pip in $PUBLICADDRS ; do
+	if [ $mi -eq 0 ]; then
+	    cat <<EOF >>/tmp/metallb.yml
+  ip_range:
+    - "$pip-$pip"
+  protocol: "layer2"
+EOF
+	else
+	    if [ $mi -eq 1 ]; then
+		cat <<EOF >>/tmp/metallb.yml
+  additional_address_pools:
+EOF
+	    fi
+	    cat <<EOF >>/tmp/metallb.yml
+    kube_service_pool_$mi:
+      ip_range:
+        - "$pip-$pip"
+      protocol: "layer2"
+      auto_assign: true
+EOF
+	fi
+	mi=`expr $mi + 1`
+    done
+    yq m --inplace --overwrite $INVDIR/group_vars/k8s-cluster/addons.yml /tmp/metallb.yml
+    rm -f /tmp/metallb.yml
+fi
+
+#
 # Run ansible to build our kubernetes cluster.
 #
+cd $OURDIR/kubespray
 ansible-playbook -i $INVDIR/inventory.ini \
-    kubespray/cluster.yml -b -v
+    cluster.yml $METALLB_PLAYBOOK -b -v
 
 if [ ! $? -eq 0 ]; then
+    cd ..
     echo "ERROR: ansible-playbook failed; check logfiles!"
     exit 1
 fi
+cd ..
 
 mkdir -p /root/.kube
-mkdir -p ~$SWAPPER/.kube
+mkdir -p /users/$SWAPPER/.kube
 cp -p $INVDIR/artifacts/admin.conf /root/.kube/config
-cp -p $INVDIR/artifacts/admin.conf ~$SWAPPER/.kube/config
-chown -R $SWAPPER ~$SWAPPER/.kube
+cp -p $INVDIR/artifacts/admin.conf /users/$SWAPPER/.kube/config
+chown -R $SWAPPER /users/$SWAPPER/.kube
 
 kubectl wait pod -n kube-system --for=condition=Ready --all
 

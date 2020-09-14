@@ -118,10 +118,14 @@ pc.defineParameter(
     longDescription="The subnet containing service addresses.",
     advanced=True)
 pc.defineParameter(
-    "kubeAccessIp","Kubespray Access IP",
-    portal.ParameterType.STRING,"mgmt",
-    [("mgmt","mgmt"),("external","external")],
-    longDescription="If you choose external here, your NodePorts and LoadBalancers will be able to allocate ports on the public control net interface of your nodes.",
+    "kubeDoMetalLB","Kubespray Enable MetalLB",
+    portal.ParameterType.BOOLEAN,True,
+    longDescription="We enable MetalLB by default, so that users can use an \"external\" load balancer service type.  You need at least one public IP address for this option because it doesn't make sense without one.",
+    advanced=True)
+pc.defineParameter(
+    "publicIPCount", "Number of public IP addresses",
+    portal.ParameterType.INTEGER,1,
+    longDescription="Set the number of public IP addresses you will need for externally-published services (e.g., via a load balancer like MetalLB.",
     advanced=True)
 pc.defineParameter(
     "kubeFeatureGates","Kubernetes Feature Gate List",
@@ -155,6 +159,17 @@ pc.defineParameter(
 # Get any input parameter values that will override our defaults.
 #
 params = pc.bindParameters()
+
+if params.publicIPCount > 8:
+    perr = portal.ParameterWarning(
+        "You cannot request more than 8 public IP addresses, at least not without creating your own modified version of this profile!",
+        ["publicIPCount"])
+    pc.reportWarning(perr)
+if params.kubeDoMetalLB and params.publicIPCount < 1:
+    perr = portal.ParameterWarning(
+        "If you enable MetalLB, you must request at least one public IP address!",
+        ["kubeDoMetalLB","publicIPCount"])
+    pc.reportWarning(perr)
 
 #
 # Give the library a chance to return nice JSON-formatted exception(s) and/or
@@ -253,5 +268,15 @@ class EmulabEncrypt(RSpec.Resource):
 
 adminPassResource = EmulabEncrypt()
 rspec.addResource(adminPassResource)
+
+#
+# Grab a few public IP addresses.
+#
+apool = IG.AddressPool("node-0",params.publicIPCount)
+try:
+    apool.Site("1")
+except:
+    pass
+rspec.addResource(apool)
 
 pc.printRequestRSpec(rspec)

@@ -81,6 +81,7 @@ KUBEENABLEMULTUS=0
 KUBEPROXYMODE="ipvs"
 KUBEPODSSUBNET="192.168.0.0/17"
 KUBESERVICEADDRESSES="192.168.128.0/17"
+KUBEDOMETALLB=1
 KUBEACCESSIP="mgmt"
 KUBEFEATUREGATES=""
 KUBELETCUSTOMFLAGS=""
@@ -263,6 +264,22 @@ if [ ! -e $OURDIR/parameters ]; then
     $PYTHON $DIRNAME/manifest-to-parameters.py $OURDIR/manifests.0.xml > $OURDIR/parameters
 fi
 . $OURDIR/parameters
+
+#
+# Grab our public addrs.
+#
+if [ ! -f $OURDIR/publicaddrs ]; then
+    $PYTHON $DIRNAME/manifest-to-publicaddrs.py $OURDIR/manifests.0.xml $CLUSTER > $OURDIR/publicaddrs.raw
+    PUBLICADDRS=`cat $OURDIR/publicaddrs.raw | sed -e 's|^\([^/]*\)/.*$|\1|' | xargs`
+    PUBLICADDRCOUNT=`cat $OURDIR/publicaddrs.raw | wc -l`
+    PUBLICADDRNETMASK=`cat $OURDIR/publicaddrs.raw | sed -e 's|^[^/]*/\(.*\)$|\1|' | head -1`
+    cat <<EOF > $OURDIR/publicaddrs
+PUBLICADDRS="$PUBLICADDRS"
+PUBLICADDRCOUNT=$PUBLICADDRCOUNT
+PUBLICADDRNETMASK="$PUBLICADDRNETMASK"
+EOF
+fi
+. $OURDIR/publicaddrs
 
 #
 # Ok, to be absolutely safe, if the ADMIN_PASS_HASH we got from params was "",
