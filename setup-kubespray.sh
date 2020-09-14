@@ -267,7 +267,7 @@ cat <<EOF >>$INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
 docker_dns_servers_strict: false
 kubectl_localhost: true
 kubeconfig_localhost: true
-docker_options: "$DOCKOPTS"
+docker_options: "$DOCKOPTS ${DOCKEROPTIONS}"
 metrics_server_enabled: true
 kube_basic_auth: true
 kube_api_pwd: "$ADMIN_PASS"

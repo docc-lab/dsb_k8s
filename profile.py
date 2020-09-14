@@ -90,6 +90,11 @@ pc.defineParameter(
     longDescription="A specific Docker version to install; if left empty, Kubespray will choose its current stable version and install that.  As explained in the Kubespray documentation (https://github.com/kubernetes-sigs/kubespray/blob/master/docs/vars.md), this value must be one of those listed at, e.g. https://github.com/kubernetes-sigs/kubespray/blob/release-2.13/roles/container-engine/docker/vars/ubuntu-amd64.yml .",
     advanced=True)
 pc.defineParameter(
+    "dockerOptions","Dockerd Options",
+    portal.ParameterType.STRING,"",
+    longDescription="Extra command-line options to pass to dockerd.  The most common option is probably an --insecure-registry .",
+    advanced=True)
+pc.defineParameter(
     "kubeNetworkPlugin","Kubernetes Network Plugin",
     portal.ParameterType.STRING,"calico",
     [("calico","Calico"),("flannel","Flannel"),("weave","Weave"),
