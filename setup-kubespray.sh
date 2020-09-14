@@ -287,7 +287,7 @@ METALLB_PLAYBOOK=
 if [ "$KUBEDOMETALLB" = "1" -a $PUBLICADDRCOUNT -gt 0 ]; then
     echo "kube_proxy_strict_arp: true" >> $INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
     METALLB_PLAYBOOK=contrib/metallb/metallb.yml
-    cat kubespray/contrib/metallb/roles/provision/defaults/main.yml >>$INVDIR/group_vars/k8s-cluster/addons.yml
+    cat kubespray/contrib/metallb/roles/provision/defaults/main.yml | grep -v -- --- >>$INVDIR/group_vars/k8s-cluster/addons.yml
     echo "metallb:" >/tmp/metallb.yml
     mi=0
     for pip in $PUBLICADDRS ; do
