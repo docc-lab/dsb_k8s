@@ -11,7 +11,7 @@ import random
 import os.path
 import sys
 
-TBCMD = "sudo mkdir -p /root/setup && (if [ -d /local/repository ]; then sudo -H /local/repository/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log; else sudo -H /tmp/setup/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log; fi)"
+TBCMD = "sudo mkdir -p /local/setup && sudo chown `cat /var/emulab/boot/swapper` /local/setup && sudo -u `cat /var/emulab/boot/swapper` -Hi /bin/sh -c '/local/repository/setup-driver.sh >/local/setup/setup-driver.log 2>&1'"
 
 #
 # For now, disable the testbed's root ssh key service until we can remove ours.

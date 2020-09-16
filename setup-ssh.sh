@@ -1,22 +1,25 @@
 #!/bin/sh
 
 ##
-## Setup a root ssh key on the calling node, and broadcast it to all the
-## other nodes' authorized_keys file.
+## Setup a ssh key on the calling node *for the calling uid*, and
+## broadcast it to all the other nodes' authorized_keys file.
 ##
 
 set -x
 
-# Gotta know the rules!
-if [ $EUID -ne 0 ] ; then
-    echo "This script must be run as root" 1>&2
-    exit 1
+if [ -z "$EUID" ]; then
+    EUID=`id -u`
 fi
 
 # Grab our libs
 . "`dirname $0`/setup-lib.sh"
 
-logtstart "root-ssh"
+if [ -f $OURDIR/setup-ssh-$EUID-done ]; then
+    echo "setup-ssh-$EUID already ran; not running again"
+    exit 0
+fi
+
+logtstart "ssh-$EUID"
 
 sshkeyscan() {
     #
@@ -36,7 +39,7 @@ sshkeyscan() {
 KEYNAME=id_rsa
 
 # Remove it if it exists...
-rm -f /root/.ssh/${KEYNAME} /root/.ssh/${KEYNAME}.pub
+rm -f ~/.ssh/${KEYNAME} ~/.ssh/${KEYNAME}.pub
 
 ##
 ## Figure out our strategy.  Are we using the new geni_certificate and
@@ -47,14 +50,15 @@ chmod 600 $OURDIR/${KEYNAME}
 if [ -s $OURDIR/${KEYNAME} ] ; then
     ssh-keygen -f $OURDIR/${KEYNAME} -y > $OURDIR/${KEYNAME}.pub
     chmod 600 $OURDIR/${KEYNAME}.pub
-    mkdir -p /root/.ssh
-    chmod 600 /root/.ssh
-    cp -p $OURDIR/${KEYNAME} $OURDIR/${KEYNAME}.pub /root/.ssh/
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    cp -p $OURDIR/${KEYNAME} $OURDIR/${KEYNAME}.pub ~/.ssh/
     ps axwww > $OURDIR/ps.txt
-    cat $OURDIR/${KEYNAME}.pub >> /root/.ssh/authorized_keys
-    chmod 600 /root/.ssh/authorized_keys
+    cat $OURDIR/${KEYNAME}.pub >> ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
     sshkeyscan
-    logtend "root-ssh"
+    logtend "ssh-$EUID"
+    touch $OURDIR/setup-ssh-$EUID-done
     exit 0
 fi
 
@@ -62,8 +66,8 @@ fi
 ## If geni calls are not available, make ourself a keypair; this gets copied
 ## to other roots' authorized_keys.
 ##
-if [ ! -f /root/.ssh/${KEYNAME} ]; then
-    ssh-keygen -t rsa -f /root/.ssh/${KEYNAME} -N ''
+if [ ! -f ~/.ssh/${KEYNAME} ]; then
+    ssh-keygen -t rsa -f ~/.ssh/${KEYNAME} -N ''
 fi
 
 if [ -f $SETTINGS ]; then
@@ -73,14 +77,17 @@ fi
 if [ $GENIUSER -eq 1 ]; then
     SHAREDIR=/proj/$EPID/exp/$EEID/tmp
 
-    cp /root/.ssh/${KEYNAME}.pub $SHAREDIR/$HOSTNAME
+    $SUDO mkdir -p $SHAREDIR
+    $SUDO chown $EUID $SHAREDIR
+
+    cp ~/.ssh/${KEYNAME}.pub $SHAREDIR/$HOSTNAME
 
     for node in $NODES ; do
 	while [ ! -f $SHAREDIR/$node ]; do
             sleep 1
 	done
 	echo $node is up
-	cat $SHAREDIR/$node >> /root/.ssh/authorized_keys
+	cat $SHAREDIR/$node >> ~/.ssh/authorized_keys
     done
 else
     for node in $NODES ; do
@@ -88,7 +95,7 @@ else
 	    fqdn=`getfqdn $node`
 	    SUCCESS=1
 	    while [ $SUCCESS -ne 0 ]; do
-		su -c "$SSH  -l $SWAPPER $fqdn sudo tee -a /root/.ssh/authorized_keys" $SWAPPER < /root/.ssh/${KEYNAME}.pub
+		su -c "$SSH  -l $SWAPPER $fqdn sudo tee -a ~/.ssh/authorized_keys" $SWAPPER < ~/.ssh/${KEYNAME}.pub
 		SUCCESS=$?
 		sleep 1
 	    done
@@ -98,6 +105,8 @@ fi
 
 sshkeyscan
 
-logtend "root-ssh"
+logtend "ssh-$EUID"
+
+touch $OURDIR/setup-ssh-$EUID-done
 
 exit 0

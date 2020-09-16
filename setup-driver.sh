@@ -2,15 +2,7 @@
 
 set -x
 
-if [ -z "$EUID" ]; then
-    EUID=`id -u`
-fi
-if [ $EUID -ne 0 ] ; then
-    echo "This script must be run as root" 1>&2
-    exit 1
-fi
-
-ALLNODESCRIPTS="setup-root-ssh.sh setup-disk-space.sh"
+ALLNODESCRIPTS="setup-ssh.sh setup-disk-space.sh"
 HEADNODESCRIPTS="setup-nginx.sh setup-ssl.sh setup-kubespray.sh setup-kubernetes-extra.sh"
 
 export SRC=`dirname $0`
