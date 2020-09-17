@@ -325,7 +325,7 @@ cd ..
 
 $SUDO rm -rf /root/.kube
 $SUDO mkdir -p /root/.kube
-cp -p $INVDIR/artifacts/admin.conf /root/.kube/config
+$SUDO cp -p $INVDIR/artifacts/admin.conf /root/.kube/config
 
 [ -d /users/$SWAPPER/.kube ] && rm -rf /users/$SWAPPER/.kube
 mkdir -p /users/$SWAPPER/.kube
