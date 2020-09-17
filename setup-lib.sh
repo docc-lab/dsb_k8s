@@ -448,7 +448,7 @@ if [ ! -e $OURDIR/pssh.all-nodes ]; then
     echo > $OURDIR/pssh.other-nodes
     for node in $NODES ; do
 	echo $node >> $OURDIR/pssh.all-nodes
-	if [ "$node" = "$NODEID" ] && continue
+	[ "$node" = "$NODEID" ] && continue
 	echo $node >> $OURDIR/pssh.other-nodes
     done
 fi
