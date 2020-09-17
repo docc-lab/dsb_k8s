@@ -162,7 +162,7 @@ cat <<EOF >> $INVDIR/group_vars/all/all.yml
 override_system_hostname: false
 disable_swap: true
 ansible_python_interpreter: $PYTHONBIN
-ansible_user: root
+ansible_user: $SWAPPER
 kube_apiserver_node_port_range: 2000-36767
 kubeadm_enabled: true
 dns_min_replicas: 1

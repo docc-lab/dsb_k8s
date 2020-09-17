@@ -242,7 +242,7 @@ fi
 
 if [ ! -e ~/.ssl/encrypted.pem ]; then
     mkdir -p ~/.ssl
-    chmod 600 ~/.ssl
+    chmod 700 ~/.ssl
 
     cat $OURDIR/geni.key > ~/.ssl/encrypted.pem
     cat $OURDIR/geni.certificate >> ~/.ssl/encrypted.pem
