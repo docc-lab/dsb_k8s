@@ -442,6 +442,17 @@ for node in $NODES ; do
     NODECOUNT=`expr $NODECOUNT + 1`
 done
 
+# Construct parallel-ssh hosts files
+if [ ! -e $OURDIR/pssh.all-nodes ]; then
+    echo > $OURDIR/pssh.all-nodes
+    echo > $OURDIR/pssh.other-nodes
+    for node in $NODES ; do
+	echo $node >> $OURDIR/pssh.all-nodes
+	if [ "$node" = "$NODEID" ] && continue
+	echo $node >> $OURDIR/pssh.other-nodes
+    done
+fi
+
 OTHERNODES=""
 for node in $NODES ; do
     [ "$node" = "$NODEID" ] && continue
