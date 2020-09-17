@@ -2,14 +2,6 @@
 
 set -x
 
-if [ -z "$EUID" ]; then
-    EUID=`id -u`
-fi
-if [ $EUID -ne 0 ] ; then
-    echo "This script must be run as root" 1>&2
-    exit 1
-fi
-
 # Grab our libs
 . "`dirname $0`/setup-lib.sh"
 
@@ -20,7 +12,7 @@ fi
 logtstart "kubernetes-extra"
 
 # Create a localhost kube-proxy service and fire it off.
-cat <<'EOF' >/etc/systemd/system/kube-proxy.service
+cat <<'EOF' | $SUDO tee /etc/systemd/system/kube-proxy.service
 [Unit]
 Description=Kubernetes Local Proxy Service
 After=kubelet.service
@@ -36,9 +28,9 @@ StandardError=journal+console
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl daemon-reload
-systemctl enable kube-proxy
-systemctl start kube-proxy
+service_init_reload
+service_enable kube-proxy
+service_start kube-proxy
 
 # Expose the dashboard IFF we have a certificate configuration
 if [ ! "$SSLCERTTYPE" = "none" -a "$SSLCERTCONFIG" = "proxy" ]; then
@@ -49,7 +41,7 @@ if [ ! "$SSLCERTTYPE" = "none" -a "$SSLCERTCONFIG" = "proxy" ]; then
 	certpath="/etc/letsencrypt/live/${NFQDN}/fullchain.pem"
 	keypath="/etc/letsencrypt/live/${NFQDN}/privkey.pem"
     fi
-    cat <<EOF >/etc/nginx/sites-available/k8s-dashboard
+    cat <<EOF | $SUDO tee /etc/nginx/sites-available/k8s-dashboard
 map \$http_upgrade \$connection_upgrade {
         default Upgrade;
         ''      close;
@@ -75,9 +67,9 @@ server {
         }
 }
 EOF
-    ln -sf /etc/nginx/sites-available/k8s-dashboard \
+    $SUDO ln -sf /etc/nginx/sites-available/k8s-dashboard \
         /etc/nginx/sites-enabled/k8s-dashboard
-    systemctl restart nginx
+    service_restart nginx
 fi
 
 # Generate a cluster-wide token for an admin account, and dump it into

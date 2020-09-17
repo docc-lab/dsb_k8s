@@ -2,14 +2,6 @@
 
 set -x
 
-if [ -z "$EUID" ]; then
-    EUID=`id -u`
-fi
-if [ $EUID -ne 0 ] ; then
-    echo "This script must be run as root" 1>&2
-    exit 1
-fi
-
 # Grab our libs
 . "`dirname $0`/setup-lib.sh"
 
@@ -22,8 +14,8 @@ logtstart "kubespray"
 # First, we need yq.
 are_packages_installed yq
 if [ ! $? -eq 1 ]; then
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
-    add-apt-repository -y ppa:rmescandon/yq
+    $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
+    $SUDO add-apt-repository -y ppa:rmescandon/yq
     maybe_install_packages yq
 fi
 
@@ -54,7 +46,7 @@ if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
     $PIP install -r kubespray/requirements.txt
 else
     maybe_install_packages software-properties-common ${PYTHON}-pip
-    add-apt-repository --yes --update ppa:ansible/ansible
+    $SUDO add-apt-repository --yes --update ppa:ansible/ansible
     maybe_install_packages ansible
     $PIP install -r kubespray/requirements.txt
 fi
@@ -108,25 +100,25 @@ else
     ip=10.10.1.1
     nm=255.255.0.0
     cidr=$ip/16
-    echo "$ip $HEAD" >> /etc/hosts
-    ip link add type dummy name dummy0
-    ip addr add $cidr dev dummy0
-    ip link set dummy0 up
+    echo "$ip $HEAD" | $SUDO tee -a /etc/hosts
+    $SUDO ip link add type dummy name dummy0
+    $SUDO ip addr add $cidr dev dummy0
+    $SUDO ip link set dummy0 up
     DISTRIB_MAJOR=`. /etc/lsb-release && echo $DISTRIB_RELEASE | cut -d. -f1`
     if [ $DISTRIB_MAJOR -lt 18 ]; then
-	cat <<EOF > /etc/network/interfaces.d/kube-single-node.conf
+	cat <<EOF | $SUDO tee /etc/network/interfaces.d/kube-single-node.conf
 auto dummy0
 iface dummy0 inet static
     address $cidr
     pre-up ip link add dummy0 type dummy
 EOF
     else
-	cat <<EOF >/etc/systemd/network/dummy0.netdev
+	cat <<EOF | $SUDO tee /etc/systemd/network/dummy0.netdev
 [NetDev]
 Name=dummy0
 Kind=type
 EOF
-	cat <<EOF >/etc/systemd/network/dummy0.network
+	cat <<EOF | $SUDO tee /etc/systemd/network/dummy0.network
 [Match]
 Name=dummy0
 
@@ -170,7 +162,7 @@ cat <<EOF >> $INVDIR/group_vars/all/all.yml
 override_system_hostname: false
 disable_swap: true
 ansible_python_interpreter: $PYTHONBIN
-ansible_user: root
+ansible_user: $SWAPPER
 kube_apiserver_node_port_range: 2000-36767
 kubeadm_enabled: true
 dns_min_replicas: 1
@@ -331,9 +323,12 @@ if [ ! $? -eq 0 ]; then
 fi
 cd ..
 
-mkdir -p /root/.kube
+$SUDO rm -rf /root/.kube
+$SUDO mkdir -p /root/.kube
+$SUDO cp -p $INVDIR/artifacts/admin.conf /root/.kube/config
+
+[ -d /users/$SWAPPER/.kube ] && rm -rf /users/$SWAPPER/.kube
 mkdir -p /users/$SWAPPER/.kube
-cp -p $INVDIR/artifacts/admin.conf /root/.kube/config
 cp -p $INVDIR/artifacts/admin.conf /users/$SWAPPER/.kube/config
 chown -R $SWAPPER /users/$SWAPPER/.kube
 
@@ -347,7 +342,7 @@ which helm
 if [ ! $? -eq 0 -a -n "${HELM_VERSION}" ]; then
     wget https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz
     tar -xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz
-    mv linux-amd64/helm /usr/local/bin/helm
+    $SUDO mv linux-amd64/helm /usr/local/bin/helm
 
     helm init --upgrade --force-upgrade
     kubectl create serviceaccount --namespace kube-system tiller

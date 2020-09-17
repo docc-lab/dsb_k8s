@@ -5,14 +5,26 @@ DIRNAME=`dirname $0`
 #
 # Setup our core vars
 #
-OURDIR=/root/setup
+OURDIR=/local/setup
 SETTINGS=$OURDIR/settings
 LOCALSETTINGS=$OURDIR/settings.local
 TOPOMAP=$OURDIR/topomap
 BOOTDIR=/var/emulab/boot
 TMCC=/usr/local/etc/emulab/tmcc
+SWAPPER=`cat $BOOTDIR/swapper`
 
-[ ! -d $OURDIR ] && mkdir -p $OURDIR
+if [ -z "$EUID" ]; then
+    EUID=`id -u`
+fi
+SUDO=
+if [ ! $EUID -eq 0 ] ; then
+    SUDO=sudo
+fi
+
+[ ! -d $OURDIR ] && ($SUDO mkdir -p $OURDIR && $SUDO chown $SWAPPER $OURDIR)
+[ ! -e $SETTINGS ] && touch $SETTINGS
+[ ! -e $LOCALSETTINGS ] && touch $LOCALSETTINGS
+cd $OURDIR
 
 # Setup time logging stuff early
 TIMELOGFILE=$OURDIR/setup-time.log
@@ -47,10 +59,6 @@ logtend() {
 if [ $FIRSTTIME -ne 0 ]; then
     logtstart "libfirsttime"
 fi
-
-[ ! -e $SETTINGS ] && touch $SETTINGS
-[ ! -e $LOCALSETTINGS ] && touch $LOCALSETTINGS
-cd $OURDIR
 
 #LOCKFILE="lockfile -1 -r -1 "
 LOCKFILE="lockfile-create --retry 65535 "
@@ -105,15 +113,15 @@ ADMIN_PASS_HASH=''
 # Setup apt-get to not prompt us
 #
 if [ ! -e $OURDIR/apt-configured ]; then
-    echo "force-confdef" > /etc/dpkg/dpkg.cfg.d/cloudlab
-    echo "force-confold" >> /etc/dpkg/dpkg.cfg.d/cloudlab
+    echo "force-confdef" | $SUDO tee -a /etc/dpkg/dpkg.cfg.d/cloudlab
+    echo "force-confold" | $SUDO tee -a /etc/dpkg/dpkg.cfg.d/cloudlab
     touch $OURDIR/apt-configured
 fi
 export DEBIAN_FRONTEND=noninteractive
 # -o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef" 
 DPKGOPTS=''
 APTGETINSTALLOPTS='-y'
-APTGETINSTALL="apt-get $DPKGOPTS install $APTGETINSTALLOPTS"
+APTGETINSTALL="$SUDO apt-get $DPKGOPTS install $APTGETINSTALLOPTS"
 # Don't install/upgrade packages if this is not set
 if [ ${DO_APT_INSTALL} -eq 0 ]; then
     APTGETINSTALL="/bin/true ${APTGETINSTALL}"
@@ -121,7 +129,7 @@ fi
 
 do_apt_update() {
     if [ ! -f $OURDIR/apt-updated -a "${DO_APT_UPDATE}" = "1" ]; then
-	apt-get update
+	$SUDO apt-get update
 	touch $OURDIR/apt-updated
     fi
 }
@@ -182,7 +190,7 @@ if [ ! $? -eq 0 ]; then
 	# we must have python.
 	while [ ! $success -eq 0 ]; do
 	    do_apt_update
-	    apt-get $DPKGOPTS install $APTGETINSTALLOPTS python3
+	    $SUDO apt-get $DPKGOPTS install $APTGETINSTALLOPTS python3
 	    success=$?
 	done
 	PYTHON=python3
@@ -210,7 +218,7 @@ success=`expr $? = 1`
 # we must have this package.
 while [ ! $success -eq 0 ]; do
     do_apt_update
-    apt-get $DPKGOPTS install $APTGETINSTALLOPTS ${PYTHON}-cryptography \
+    $SUDO apt-get $DPKGOPTS install $APTGETINSTALLOPTS ${PYTHON}-cryptography \
 	${PYTHON}-future ${PYTHON}-six ${PYTHON}-lxml ${PYTHON}-pip
     success=$?
 done
@@ -232,12 +240,12 @@ if [ ! -e $OURDIR/geni.certificate ]; then
     fi
 fi
 
-if [ ! -e /root/.ssl/encrypted.pem ]; then
-    mkdir -p /root/.ssl
-    chmod 600 /root/.ssl
+if [ ! -e ~/.ssl/encrypted.pem ]; then
+    mkdir -p ~/.ssl
+    chmod 700 ~/.ssl
 
-    cat $OURDIR/geni.key > /root/.ssl/encrypted.pem
-    cat $OURDIR/geni.certificate >> /root/.ssl/encrypted.pem
+    cat $OURDIR/geni.key > ~/.ssl/encrypted.pem
+    cat $OURDIR/geni.certificate >> ~/.ssl/encrypted.pem
 fi
 
 if [ ! -e $OURDIR/manifests.xml ]; then
@@ -250,7 +258,7 @@ if [ ! -e $OURDIR/manifests.xml ]; then
 fi
 
 if [ ! -e $OURDIR/encrypted_admin_pass ]; then
-    cat /root/setup/manifests.0.xml | perl -e '@lines = <STDIN>; $all = join("",@lines); if ($all =~ /^.+<[^:]+:password[^>]*>([^<]+)<\/[^:]+:password>.+/igs) { print $1; }' > $OURDIR/encrypted_admin_pass
+    cat $OURDIR/manifests.0.xml | perl -e '@lines = <STDIN>; $all = join("",@lines); if ($all =~ /^.+<[^:]+:password[^>]*>([^<]+)<\/[^:]+:password>.+/igs) { print $1; }' > $OURDIR/encrypted_admin_pass
 fi
 
 if [ ! -e $OURDIR/decrypted_admin_pass -a -s $OURDIR/encrypted_admin_pass ]; then
@@ -382,7 +390,7 @@ fi
 # This supports geni multi-site experiments.
 #
 if [ \( -s $OURDIR/manifests.xml \) -a \( ! \( -s $OURDIR/fqdn.map \) \) ]; then
-    cat manifests.xml | tr -d '\n' | sed -e 's/<node /\n<node /g'  | sed -n -e "s/^<node [^>]*client_id=['\"]*\([^'\"]*\)['\"].*<host name=['\"]\([^'\"]*\)['\"].*$/\1\t\2/p" > $OURDIR/fqdn.map
+    cat $OURDIR/manifests.xml | tr -d '\n' | sed -e 's/<node /\n<node /g'  | sed -n -e "s/^<node [^>]*client_id=['\"]*\([^'\"]*\)['\"].*<host name=['\"]\([^'\"]*\)['\"].*$/\1\t\2/p" > $OURDIR/fqdn.map
     # Add a newline if we wrote anything.
     if [ -s $OURDIR/fqdn.map ]; then
 	echo '' >> $OURDIR/fqdn.map
@@ -404,7 +412,7 @@ if [ \( -s $OURDIR/manifests.xml \) -a \( ! \( -s $OURDIR/fqdn.map \) \) ]; then
     cat $OURDIR/fqdn.map | grep -v '^fw-s2[ \t]*' > $OURDIR/fqdn.map.tmp
     mv $OURDIR/fqdn.map.tmp $OURDIR/fqdn.map
 
-    cat manifests.xml | tr -d '\n' | sed -e 's/<node /\n<node /g'  | sed -n -e "s/^<node [^>]*component_id=['\"]*[a-zA-Z0-9:\+\.]*node+\([^'\"]*\)['\"].*<host name=['\"]\([^'\"]*\)['\"].*$/\1\t\2/p" > $OURDIR/fqdn.physical.map
+    cat $OURDIR/manifests.xml | tr -d '\n' | sed -e 's/<node /\n<node /g'  | sed -n -e "s/^<node [^>]*component_id=['\"]*[a-zA-Z0-9:\+\.]*node+\([^'\"]*\)['\"].*<host name=['\"]\([^'\"]*\)['\"].*$/\1\t\2/p" > $OURDIR/fqdn.physical.map
     # Add a newline if we wrote anything.
     if [ -s $OURDIR/fqdn.physical.map ]; then
 	echo '' >> $OURDIR/fqdn.physical.map
@@ -455,7 +463,7 @@ if [ ! $? -eq 0 ]; then
 	fi
 
 	echo "*** Changing Ubuntu mirror from $oldstr to $newstr ..."
-	sed -E -i.us.archive.ubuntu.com -e "s|(${oldstr})|$newstr|" /etc/apt/sources.list
+	$SUDO sed -E -i.us.archive.ubuntu.com -e "s|(${oldstr})|$newstr|" /etc/apt/sources.list
     fi
 
     echo "MIRRORSETUP=1" >> $SETTINGS
@@ -470,7 +478,7 @@ if [ ! -f $OURDIR/apt-updated -a "${DO_APT_UPDATE}" = "1" ]; then
     if [  $? != 0 -a "x${DISTRIB_CODENAME}" = "xutopic" ]; then
 	sed -i -re 's/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
     fi
-    apt-get update
+    $SUDO apt-get update
     touch $OURDIR/apt-updated
 fi
 
@@ -479,11 +487,11 @@ if [ ! -f $OURDIR/apt-dist-upgraded -a "${DO_APT_DIST_UPGRADE}" = "1" ]; then
     # install going to the wrong place.
     PKGS="grub-common grub-gfxpayload-lists grub-pc grub-pc-bin grub2-common"
     for pkg in $PKGS; do
-	apt-mark hold $pkg
+	$SUDO apt-mark hold $pkg
     done
-    apt-get dist-upgrade -y
+    $SUDO apt-get dist-upgrade -y
     for pkg in $PKGS; do
-	apt-mark unhold $pkg
+	$SUDO apt-mark unhold $pkg
     done
     touch $OURDIR/apt-dist-upgraded
 fi
@@ -561,48 +569,54 @@ getcontrolip() {
     echo $ip
 }
 
+service_init_reload() {
+    if [ ${HAVE_SYSTEMD} -eq 1 ]; then
+	$SUDO systemctl daemon-reload
+    fi
+}
+
 service_enable() {
     service=$1
     if [ ${HAVE_SYSTEMD} -eq 0 ]; then
-	update-rc.d $service enable
+	$SUDO update-rc.d $service enable
     else
-	systemctl enable $service
+	$SUDO systemctl enable $service
     fi
 }
 
 service_disable() {
     service=$1
     if [ ${HAVE_SYSTEMD} -eq 0 ]; then
-	update-rc.d $service disable
+	$SUDO update-rc.d $service disable
     else
-	systemctl disable $service
+	$SUDO systemctl disable $service
     fi
 }
 
 service_restart() {
     service=$1
     if [ ${HAVE_SYSTEMD} -eq 0 ]; then
-	service $service restart
+	$SUDO service $service restart
     else
-	systemctl restart $service
+	$SUDO systemctl restart $service
     fi
 }
 
 service_stop() {
     service=$1
     if [ ${HAVE_SYSTEMD} -eq 0 ]; then
-	service $service stop
+	$SUDO service $service stop
     else
-	systemctl stop $service
+	$SUDO systemctl stop $service
     fi
 }
 
 service_start() {
     service=$1
     if [ ${HAVE_SYSTEMD} -eq 0 ]; then
-	service $service start
+	$SUDO service $service start
     else
-	systemctl start $service
+	$SUDO systemctl start $service
     fi
 }
 

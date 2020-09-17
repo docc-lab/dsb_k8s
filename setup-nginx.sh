@@ -2,14 +2,6 @@
 
 set -x
 
-if [ -z "$EUID" ]; then
-    EUID=`id -u`
-fi
-if [ $EUID -ne 0 ] ; then
-    echo "This script must be run as root" 1>&2
-    exit 1
-fi
-
 # Grab our libs
 . "`dirname $0`/setup-lib.sh"
 
@@ -28,15 +20,15 @@ if [ ! $? -eq 0 ]; then
     maybe_install_packages nginx
 fi
 
-echo "$ADMIN_PASS" | htpasswd -n -i admin > /etc/nginx/htpasswd
-chown www-data:root /etc/nginx/htpasswd
-chmod 660 /etc/nginx/htpasswd
+echo "$ADMIN_PASS" | htpasswd -n -i admin | $SUDO tee -a /etc/nginx/htpasswd
+$SUDO chown www-data:root /etc/nginx/htpasswd
+$SUDO chmod 660 /etc/nginx/htpasswd
 
-mkdir /var/www/profile-setup
-chown www-data /var/www/profile-setup
-mount -o bind,ro $OURDIR /var/www/profile-setup/
-echo $OURDIR /var/www/profile-setup none defaults,bind 0 0 >> /etc/fstab
-cat <<EOF >/etc/nginx/sites-available/profile-setup-logs
+$SUDO mkdir /var/www/profile-setup
+$SUDO chown www-data /var/www/profile-setup
+$SUDO mount -o bind,ro $OURDIR /var/www/profile-setup/
+echo $OURDIR /var/www/profile-setup none defaults,bind 0 0 | $SUDO tee -a /etc/fstab
+cat <<EOF | $SUDO tee /etc/nginx/sites-available/profile-setup-logs
 server {
         include /etc/nginx/mime.types;
         types { text/plain log; }
@@ -52,7 +44,7 @@ server {
         }
 }
 EOF
-ln -s /etc/nginx/sites-available/profile-setup-logs \
+$SUDO ln -s /etc/nginx/sites-available/profile-setup-logs \
     /etc/nginx/sites-enabled/profile-setup-logs
 service_enable nginx
 service_restart nginx
