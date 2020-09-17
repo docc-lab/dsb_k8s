@@ -198,21 +198,21 @@ The dashboard will not be available immediately.  There are multiple ways to det
 
 Once the dashboard is available, you can login with either basic or token authentication.  (You may also supply a kubeconfig file, but we don't provide one that includes a secret by default.)
   - `basic`: username `admin`, password `{password-adminPass}`
-  - `token`: copy the token from http://{host-node-0}:7999/admin-token.txt (this file is located on `node-0` in `/root/setup/admin-token.txt`)
+  - `token`: copy the token from http://{host-node-0}:7999/admin-token.txt (this file is located on `node-0` in `/local/setup/admin-token.txt`)
 
 (To provide secure dashboard access, we run a `kube-proxy` instance that listens on localhost:8888 and accepts all incoming hosts, and export that via nginx proxy listening on `{host-node-0}:8080`.  We also create an `admin` `serviceaccount` in the `default` namespace, and that is the serviceaccount associated with the token auth option mentioned just above.)
 
 Kubernetes credentials are in `~/.kube/config`, or in `/root/.kube/config`, as you'd expect.
 
-The profile's setup scripts are automatically installed on each node in `/local/repository`, and all of the Kubernetes installation is triggered from `node-0`.  The scripts execute as `root`, and keep state and downloaded files in `/root/setup/`.  The scripts write copious logfiles in that directory; so if you think there's a problem with the configuration, you could take a quick look through these logs on the `node-0` node.
+The profile's setup scripts are automatically installed on each node in `/local/repository`, and all of the Kubernetes installation is triggered from `node-0`.  The scripts execute as your uid, and keep state and downloaded files in `/local/setup/`.  The scripts write copious logfiles in that directory; so if you think there's a problem with the configuration, you could take a quick look through these logs on the `node-0` node.  The primary logfile is `/local/setup/setup-driver.log`.
 
-Kubespray is a collection of Ansible playbooks, so you can make changes to the deployed kubernetes cluster, or even destroy and rebuild it (although you would then lose any of the post-install configuration we do in `/local/repository/setup-kubernetes-extra.sh`).  The `/local/repository/setup-kubespray.sh` script installs Ansible inside a Python 3 `virtualenv` (in `/root/setup/kubespray-virtualenv` on `node-0`).  A `virtualenv` (or `venv`) is effectively a separate part of the filesystem containing Python libraries and scripts, and a set of environment variables and paths that restrict its user to those Python libraries and scripts.  To modify your cluster's configuration in the Kubespray/Ansible way, you can run commands like these (as `root`):
+Kubespray is a collection of Ansible playbooks, so you can make changes to the deployed kubernetes cluster, or even destroy and rebuild it (although you would then lose any of the post-install configuration we do in `/local/repository/setup-kubernetes-extra.sh`).  The `/local/repository/setup-kubespray.sh` script installs Ansible inside a Python 3 `virtualenv` (in `/local/setup/kubespray-virtualenv` on `node-0`).  A `virtualenv` (or `venv`) is effectively a separate part of the filesystem containing Python libraries and scripts, and a set of environment variables and paths that restrict its user to those Python libraries and scripts.  To modify your cluster's configuration in the Kubespray/Ansible way, you can run commands like these (as your uid):
 
-1. "Enter" (or access) the `virtualenv`: `. /root/setup/kubespray-virtualenv/bin/activate`
+1. "Enter" (or access) the `virtualenv`: `. /local/setup/kubespray-virtualenv/bin/activate`
 2. Leave (or remove the environment vars from your shell session) the `virtualenv`: `deactivate`
-3. Destroy your entire kubernetes cluster: `ansible-playbook -i /root/setup/inventories/emulab/inventory.ini /root/setup/kubespray/remove-node.yml -b -v --extra-vars "node=node-0,node-1,node-2"`
+3. Destroy your entire kubernetes cluster: `ansible-playbook -i /local/setup/inventories/emulab/inventory.ini /local/setup/kubespray/remove-node.yml -b -v --extra-vars "node=node-0,node-1,node-2"`
    (note that you would want to supply the short names of all nodes in your experiment)
-4. Recreate your kubernetes cluster: `ansible-playbook -i /root/setup/inventories/emulab/inventory.ini /root/setup/kubespray/cluster.yml -b -v`
+4. Recreate your kubernetes cluster: `ansible-playbook -i /local/setup/inventories/emulab/inventory.ini /local/setup/kubespray/cluster.yml -b -v`
 
 To change the Ansible and playbook configuration, you can start reading Kubespray documentation:
   - https://github.com/kubernetes-sigs/kubespray/blob/master/docs/getting-started.md
