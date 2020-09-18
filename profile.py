@@ -95,6 +95,11 @@ pc.defineParameter(
     longDescription="Extra command-line options to pass to dockerd.  The most common option is probably an --insecure-registry .",
     advanced=True)
 pc.defineParameter(
+    "doLocalRegistry","Create Private, Local Registry",
+    portal.ParameterType.BOOLEAN,True,
+    longDescription="Create a private Docker registry on the kube master, and expose it on the (private) management IP address, port 5000, and configure Kubernetes to be able to use it (--insecure-registry).  This is nearly mandatory for some development workflows, so it is on by default.",
+    advanced=True)
+pc.defineParameter(
     "kubeNetworkPlugin","Kubernetes Network Plugin",
     portal.ParameterType.STRING,"calico",
     [("calico","Calico"),("flannel","Flannel"),("weave","Weave"),

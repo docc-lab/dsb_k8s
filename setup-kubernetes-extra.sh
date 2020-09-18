@@ -85,6 +85,16 @@ chmod 644 $OURDIR/admin-token.txt
 cp -p ~/.kube/config $OURDIR/kubeconfig
 chmod 644 $OURDIR/kubeconfig
 
+# Make $SWAPPER a member of the docker group, so that they can do stuff sans sudo.
+parallel-ssh -h $OURDIR/pssh.all-nodes sudo usermod -a -G docker $SWAPPER
+
+# If the user wants a local, private, insecure registry on $HEAD $MGMTLAN, set that up.
+if [ "$DOLOCALREGISTRY" = "1" ]; then
+    ip=`getnodeip $HEAD $MGMTLAN`
+    $SUDO docker create --restart=always -p $ip:5000:5000 --name local-registry registry:2
+    $SUDO docker start local-registry
+fi
+
 logtend "kubernetes-extra"
 touch $OURDIR/kubernetes-extra-done
 exit 0
