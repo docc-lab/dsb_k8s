@@ -60,47 +60,55 @@ INVDIR=$OURDIR/inventories/kubernetes
 mkdir -p $INVDIR
 cp -pR kubespray/inventory/sample/group_vars $INVDIR
 
+HEAD_MGMT_IP=`getnodeip $HEAD $MGMTLAN`
 INV=$INVDIR/inventory.ini
-if [ $NODECOUNT -gt 1 ]; then
-    echo '[all]' > $INV
-    for node in $NODES ; do
-	mgmtip=`getnodeip $node $MGMTLAN`
-	dataip=`getnodeip $node $DATALAN`
-	if [ "$KUBEACCESSIP" = "mgmt" ]; then
-	    accessip="$mgmtip"
-	else
-	    accessip=`getcontrolip $node`
-	fi
-	echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$accessip" >> $INV
-    done
-    # The first 2 nodes are kube-master.
-    echo '[kube-master]' >> $INV
-    for node in `echo $NODES | cut -d ' ' -f-2` ; do
-	echo "$node" >> $INV
-    done
-    # The first 3 nodes are etcd.
-    echo '[etcd]' >> $INV
-    for node in `echo $NODES | cut -d ' ' -f-3` ; do
-	echo "$node" >> $INV
-    done
-    # The last 2--N nodes are kube-node, unless there is only one node.
-    kubenodecount=2
-    if [ "$NODES" = `echo $NODES | cut -d ' ' -f2` ]; then
-	kubenodecount=1
+
+echo '[all]' > $INV
+for node in $NODES ; do
+    mgmtip=`getnodeip $node $MGMTLAN`
+    dataip=`getnodeip $node $DATALAN`
+    if [ "$KUBEACCESSIP" = "mgmt" ]; then
+	accessip="$mgmtip"
+    else
+	accessip=`getcontrolip $node`
     fi
-    echo '[kube-node]' >> $INV
-    for node in `echo $NODES | cut -d ' ' -f${kubenodecount}-` ; do
-	echo "$node" >> $INV
-    done
-else
+    echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$accessip" >> $INV
+done
+# The first 2 nodes are kube-master.
+echo '[kube-master]' >> $INV
+for node in `echo $NODES | cut -d ' ' -f-2` ; do
+    echo "$node" >> $INV
+done
+# The first 3 nodes are etcd.
+echo '[etcd]' >> $INV
+for node in `echo $NODES | cut -d ' ' -f-3` ; do
+    echo "$node" >> $INV
+done
+# The last 2--N nodes are kube-node, unless there is only one node.
+kubenodecount=2
+if [ "$NODES" = `echo $NODES | cut -d ' ' -f2` ]; then
+    kubenodecount=1
+fi
+echo '[kube-node]' >> $INV
+for node in `echo $NODES | cut -d ' ' -f${kubenodecount}-` ; do
+    echo "$node" >> $INV
+done
+cat <<EOF >> $INV
+[k8s-cluster:children]
+kube-master
+kube-node
+EOF
+
+if [ $NODECOUNT -eq 1 ]; then
     # We cannot use localhost; we have to use a dummy device, and that
     # works fine.  We need to fix things up because there is nothing in
     # /etc/hosts, nor have ssh keys been scanned and placed in
     # known_hosts.
-    ip=10.10.1.1
-    nm=255.255.0.0
-    cidr=$ip/16
-    echo "$ip $HEAD" | $SUDO tee -a /etc/hosts
+    ip=`getnodeip $HEAD $MGMTLAN`
+    nm=`getnetmask $MGMTLAN`
+    prefix=`netmask2prefix $nm`
+    cidr=$ip/$prefix
+    echo "$ip $HEAD $HEAD-$MGMTLAN" | $SUDO tee -a /etc/hosts
     $SUDO ip link add type dummy name dummy0
     $SUDO ip addr add $cidr dev dummy0
     $SUDO ip link set dummy0 up
@@ -131,29 +139,7 @@ EOF
 
     ssh-keyscan $HEAD >> ~/.ssh/known_hosts
     ssh-keyscan $ip >> ~/.ssh/known_hosts
-
-    if [ "$KUBEACCESSIP" = "mgmt" ]; then
-	accessip="$ip"
-    else
-	accessip=`getcontrolip $HEAD`
-    fi
-
-    cat <<EOF >> $INV
-[all]
-$HEAD ansible_host=$ip ip=$ip access_ip=$ip
-[kube-master]
-$HEAD
-[etcd]
-$HEAD
-[kube-node]
-$HEAD
-EOF
 fi
-cat <<EOF >> $INV
-[k8s-cluster:children]
-kube-master
-kube-node
-EOF
 
 #
 # Get our basic configuration into place.
@@ -250,10 +236,12 @@ fi
 #
 # Add a bunch of options most people will find useful.
 #
-DOCKOPTS='--insecure-registry={{ kube_service_addresses }}  {{ docker_log_opts }}'
-if [ $NODECOUNT -gt 1 ]; then
-    for lan in $DATALANS ; do
-	DOCKOPTS="--insecure-registry=`getnodeip node-0 $lan`/`getnetmaskprefix $lan` $DOCKOPTS"
+DOCKOPTS='--insecure-registry={{ kube_service_addresses }} {{ docker_log_opts }}'
+if [ "$MGMTLAN" = "$DATALANS" ]; then
+    DOCKOPTS="--insecure-registry=`getnodeip $HEAD $MGMTLAN`/`getnetmaskprefix $MGMTLAN` $DOCKOPTS"
+else
+    for lan in $MGMTLAN $DATALANS ; do
+	DOCKOPTS="--insecure-registry=`getnodeip $HEAD $lan`/`getnetmaskprefix $lan` $DOCKOPTS"
     done
 fi
 cat <<EOF >>$INVDIR/group_vars/k8s-cluster/k8s-cluster.yml

@@ -100,6 +100,11 @@ SSLCERTCONFIG="proxy"
 MGMTLAN="datalan-1"
 DATALAN="datalan-1"
 DATALANS="datalan-1"
+SINGLENODE_MGMT_IP=10.10.1.1
+SINGLENODE_MGMT_NETMASK=255.255.0.0
+SINGLENODE_MGMT_NETBITS=16
+SINGLENODE_MGMT_CIDR=${SINGLENODE_MGMT_IP}/${SINGLENODE_MGMT_NETBITS}
+DOLOCALREGISTRY=1
 
 #
 # We have an 'admin' user that gets a random password that comes in from
@@ -539,7 +544,12 @@ getnodeip() {
 	return
     fi
 
-    sed -ne "s/^\([0-9\.]*\)[ \t]*${node}-${network}[ \t]*.*$/\1/p" /etc/hosts
+    ip=`sed -ne "s/^\([0-9\.]*\)[ \t]*${node}-${network}[ \t]*.*$/\1/p" /etc/hosts`
+    if [ "$network" = "$MGMTLAN" -a -z "$ip" ]; then
+	echo $SINGLENODE_MGMT_IP
+    else
+	echo $ip
+    fi
 }
 
 getnetmask() {
@@ -550,7 +560,12 @@ getnetmask() {
 	return
     fi
 
-    sed -ne "s/^${network},\([0-9\.]*\),.*$/\1/p" $TOPOMAP
+    nm=`sed -ne "s/^${network},\([0-9\.]*\),.*$/\1/p" $TOPOMAP`
+    if [ "$network" = "$MGMTLAN" -a -z "$nm" ]; then
+	echo $SINGLENODE_MGMT_NETMASK
+    else
+	echo $nm
+    fi
 }
 
 getnetmaskprefix() {
