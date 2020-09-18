@@ -167,6 +167,7 @@ kube_apiserver_node_port_range: 2000-36767
 kubeadm_enabled: true
 dns_min_replicas: 1
 dashboard_enabled: true
+dashboard_token_ttl: 43200
 EOF
 if [ -n "${DOCKERVERSION}" ]; then
     cat <<EOF >> $INVDIR/group_vars/all/all.yml
