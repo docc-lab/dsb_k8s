@@ -6,6 +6,8 @@ DIRNAME=`dirname $0`
 # Setup our core vars
 #
 OURDIR=/local/setup
+WWWPRIV=$OURDIR
+WWWPUB=/local/profile-public
 SETTINGS=$OURDIR/settings
 LOCALSETTINGS=$OURDIR/settings.local
 TOPOMAP=$OURDIR/topomap
