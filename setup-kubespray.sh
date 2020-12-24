@@ -229,6 +229,7 @@ else
     HELM_INV_FILE=$INVDIR/group_vars/k8s-cluster/addons.yml
 fi
 echo "helm_enabled: true" >> $HELM_INV_FILE
+echo 'helm_stable_repo_url: "https://charts.helm.sh/stable"' >> $HELM_INV_FILE
 if [ -n "${HELMVERSION}" ]; then
     echo "helm_version: ${HELMVERSION}" >> $HELM_INV_FILE
 fi
@@ -333,7 +334,7 @@ if [ ! $? -eq 0 -a -n "${HELM_VERSION}" ]; then
     tar -xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz
     $SUDO mv linux-amd64/helm /usr/local/bin/helm
 
-    helm init --upgrade --force-upgrade
+    helm init --upgrade --force-upgrade --stable-repo-url "https://charts.helm.sh/stable"
     kubectl create serviceaccount --namespace kube-system tiller
     kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
     kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
