@@ -3,7 +3,7 @@
 set -x
 
 ALLNODESCRIPTS="setup-ssh.sh setup-disk-space.sh"
-HEADNODESCRIPTS="setup-nginx.sh setup-ssl.sh setup-kubespray.sh setup-kubernetes-extra.sh"
+HEADNODESCRIPTS="setup-nginx.sh setup-ssl.sh setup-kubespray.sh setup-kubernetes-extra.sh setup-end.sh"
 
 export SRC=`dirname $0`
 cd $SRC

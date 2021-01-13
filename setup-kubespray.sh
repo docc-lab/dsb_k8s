@@ -11,6 +11,13 @@ fi
 
 logtstart "kubespray"
 
+maybe_install_packages dma
+maybe_install_packages mailutils
+echo "$PFQDN" > /etc/mailname
+sleep 2
+echo "Your ${EXPTTYPE} instance is setting up on $NFQDN ." \
+    |  mail -s "${EXPTTYPE} Instance Setting Up" ${SWAPPER_EMAIL} &
+
 # First, we need yq.
 are_packages_installed yq
 if [ ! $? -eq 1 ]; then

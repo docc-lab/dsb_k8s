@@ -323,6 +323,7 @@ if [ "x${ADMIN_PASS_HASH}" = "x" ] ; then
     echo "ADMIN_PASS_HASH='${ADMIN_PASS_HASH}'" >> $OURDIR/parameters
 fi
 
+EXPTTYPE="Kubernetes"
 CREATOR=`cat $BOOTDIR/creator`
 SWAPPER=`cat $BOOTDIR/swapper`
 NODEID=`cat $BOOTDIR/nickname | cut -d . -f 1`
