@@ -49,8 +49,11 @@ if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
 	virtualenv $KUBESPRAY_VIRTUALENV --python=${PYTHON}
 	. $KUBESPRAY_VIRTUALENV/bin/activate
     fi
-    $PIP install ansible==2.7
     $PIP install -r kubespray/requirements.txt
+    find $KUBESPRAY_VIRTUALENV -name ansible-playbook
+    if [ ! $? -eq 0 ]; then
+	$PIP install ansible==2.7
+    fi
 else
     maybe_install_packages software-properties-common ${PYTHON}-pip
     $SUDO add-apt-repository --yes --update ppa:ansible/ansible
@@ -151,7 +154,8 @@ fi
 #
 # Get our basic configuration into place.
 #
-cat <<EOF >> $INVDIR/group_vars/all/all.yml
+OVERRIDES=$INVDIR/overrides.yml
+cat <<EOF >> $OVERRIDES
 override_system_hostname: false
 disable_swap: true
 ansible_python_interpreter: $PYTHONBIN
@@ -163,82 +167,76 @@ dashboard_enabled: true
 dashboard_token_ttl: 43200
 EOF
 if [ -n "${DOCKERVERSION}" ]; then
-    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+    cat <<EOF >> $OVERRIDES
 docker_version: ${DOCKERVERSION}
 EOF
 fi
 if [ -n "${KUBEVERSION}" ]; then
-    cat <<EOF >> $INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
+    cat <<EOF >> $OVERRIDES
 kube_version: ${KUBEVERSION}
 EOF
 fi
 if [ -n "$KUBEFEATUREGATES" ]; then
     echo "kube_feature_gates: $KUBEFEATUREGATES" \
-	>> $INVDIR/group_vars/all/all.yml
+	>> $OVERRIDES
 fi
 if [ -n "$KUBELETCUSTOMFLAGS" ]; then
     echo "kubelet_custom_flags: $KUBELETCUSTOMFLAGS" \
-	>> $INVDIR/group_vars/all/all.yml
+	>> $OVERRIDES
 fi
 if [ -n "$KUBELETMAXPODS" -a $KUBELETMAXPODS -gt 0 ]; then
     echo "kubelet_max_pods: $KUBELETMAXPODS" \
-        >> $INVDIR/group_vars/all/all.yml
+        >> $OVERRIDES
 fi
 
 if [ "$KUBENETWORKPLUGIN" = "calico" ]; then
-    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+    cat <<EOF >> $OVERRIDES
 kube_network_plugin: calico
 docker_iptables_enabled: true
 EOF
 elif [ "$KUBENETWORKPLUGIN" = "flannel" ]; then
-cat <<EOF >> $INVDIR/group_vars/all/all.yml
+cat <<EOF >> $OVERRIDES
 kube_network_plugin: flannel
 EOF
 elif [ "$KUBENETWORKPLUGIN" = "weave" ]; then
-cat <<EOF >> $INVDIR/group_vars/all/all.yml
-kube_network_plugin: flannel
+cat <<EOF >> $OVERRIDES
+kube_network_plugin: weave
 EOF
 elif [ "$KUBENETWORKPLUGIN" = "canal" ]; then
-cat <<EOF >> $INVDIR/group_vars/all/all.yml
+cat <<EOF >> $OVERRIDES
 kube_network_plugin: canal
 EOF
 fi
 
 if [ "$KUBEENABLEMULTUS" = "1" ]; then
-cat <<EOF >> $INVDIR/group_vars/all/all.yml
+cat <<EOF >> $OVERRIDES
 kube_network_plugin_multus: true
 multus_version: stable
 EOF
 fi
 
 if [ "$KUBEPROXYMODE" = "iptables" ]; then
-    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+    cat <<EOF >> $OVERRIDES
 kube_proxy_mode: iptables
 EOF
 elif [ "$KUBEPROXYMODE" = "ipvs" ]; then
-    cat <<EOF >> $INVDIR/group_vars/all/all.yml
+    cat <<EOF >> $OVERRIDES
 kube_proxy_mode: ipvs
 EOF
 fi
 
-cat <<EOF >> $INVDIR/group_vars/all/all.yml
+cat <<EOF >> $OVERRIDES
 kube_pods_subnet: $KUBEPODSSUBNET
 kube_service_addresses: $KUBESERVICEADDRESSES
 EOF
 
 #
-# Enable helm, and stash its config bits in the right file.
+# Enable helm.
 #
-grep -q helm_enabled $INVDIR/group_vars/all/all.yml
-if [ $? -eq 0 ]; then
-    HELM_INV_FILE=$INVDIR/group_vars/all/all.yml
-else
-    HELM_INV_FILE=$INVDIR/group_vars/k8s-cluster/addons.yml
-fi
-echo "helm_enabled: true" >> $HELM_INV_FILE
-echo 'helm_stable_repo_url: "https://charts.helm.sh/stable"' >> $HELM_INV_FILE
+echo "helm_enabled: true" >> $OVERRIDES
+echo 'helm_stable_repo_url: "https://charts.helm.sh/stable"' >> $OVERRIDES
 if [ -n "${HELMVERSION}" ]; then
-    echo "helm_version: ${HELMVERSION}" >> $HELM_INV_FILE
+    echo "helm_version: ${HELMVERSION}" >> $OVERRIDES
 fi
 
 #
@@ -252,7 +250,7 @@ else
 	DOCKOPTS="--insecure-registry=`getnodeip $HEAD $lan`/`getnetmaskprefix $lan` $DOCKOPTS"
     done
 fi
-cat <<EOF >>$INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
+cat <<EOF >> $OVERRIDES
 docker_dns_servers_strict: false
 kubectl_localhost: true
 kubeconfig_localhost: true
@@ -276,7 +274,7 @@ METALLB_PLAYBOOK=
 if [ "$KUBEDOMETALLB" = "1" -a $PUBLICADDRCOUNT -gt 0 ]; then
     echo "kube_proxy_strict_arp: true" >> $INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
     METALLB_PLAYBOOK=contrib/metallb/metallb.yml
-    cat kubespray/contrib/metallb/roles/provision/defaults/main.yml | grep -v -- --- >>$INVDIR/group_vars/k8s-cluster/addons.yml
+    cat kubespray/contrib/metallb/roles/provision/defaults/main.yml | grep -v -- --- >> $OVERRIDES
     echo "metallb:" >/tmp/metallb.yml
     mi=0
     for pip in $PUBLICADDRS ; do
@@ -302,7 +300,7 @@ EOF
 	fi
 	mi=`expr $mi + 1`
     done
-    yq m --inplace --overwrite $INVDIR/group_vars/k8s-cluster/addons.yml /tmp/metallb.yml
+    yq m --inplace --overwrite $OVERRIDES /tmp/metallb.yml
     rm -f /tmp/metallb.yml
 fi
 
@@ -311,7 +309,7 @@ fi
 #
 cd $OURDIR/kubespray
 ansible-playbook -i $INVDIR/inventory.ini \
-    cluster.yml $METALLB_PLAYBOOK -b -v
+    cluster.yml $METALLB_PLAYBOOK -e @${OVERRIDES} -b -v
 
 if [ ! $? -eq 0 ]; then
     cd ..
