@@ -134,7 +134,7 @@ EOF
 	cat <<EOF | $SUDO tee /etc/systemd/network/dummy0.netdev
 [NetDev]
 Name=dummy0
-Kind=type
+Kind=dummy
 EOF
 	cat <<EOF | $SUDO tee /etc/systemd/network/dummy0.network
 [Match]
