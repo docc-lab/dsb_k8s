@@ -52,7 +52,7 @@ if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
     $PIP install -r kubespray/requirements.txt
     find $KUBESPRAY_VIRTUALENV -name ansible-playbook
     if [ ! $? -eq 0 ]; then
-	$PIP install ansible==2.7
+	$PIP install ansible==2.9
     fi
 else
     maybe_install_packages software-properties-common ${PYTHON}-pip
@@ -272,36 +272,68 @@ EOF
 #
 METALLB_PLAYBOOK=
 if [ "$KUBEDOMETALLB" = "1" -a $PUBLICADDRCOUNT -gt 0 ]; then
-    echo "kube_proxy_strict_arp: true" >> $INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
-    METALLB_PLAYBOOK=contrib/metallb/metallb.yml
-    cat kubespray/contrib/metallb/roles/provision/defaults/main.yml | grep -v -- --- >> $OVERRIDES
-    echo "metallb:" >/tmp/metallb.yml
-    mi=0
-    for pip in $PUBLICADDRS ; do
-	if [ $mi -eq 0 ]; then
-	    cat <<EOF >>/tmp/metallb.yml
+    if [ $KUBESPRAYVERSION = "release-2.13" ]; then
+	echo "kube_proxy_strict_arp: true" >> $INVDIR/group_vars/k8s-cluster/k8s-cluster.yml
+	METALLB_PLAYBOOK=contrib/metallb/metallb.yml
+	cat kubespray/contrib/metallb/roles/provision/defaults/main.yml | grep -v -- --- >> $OVERRIDES
+	echo "metallb:" >/tmp/metallb.yml
+	mi=0
+	for pip in $PUBLICADDRS ; do
+	    if [ $mi -eq 0 ]; then
+		cat <<EOF >>/tmp/metallb.yml
   ip_range:
     - "$pip-$pip"
   protocol: "layer2"
 EOF
-	else
-	    if [ $mi -eq 1 ]; then
-		cat <<EOF >>/tmp/metallb.yml
+	    else
+		if [ $mi -eq 1 ]; then
+		    cat <<EOF >>/tmp/metallb.yml
   additional_address_pools:
 EOF
-	    fi
-	    cat <<EOF >>/tmp/metallb.yml
+		fi
+		cat <<EOF >>/tmp/metallb.yml
     kube_service_pool_$mi:
       ip_range:
         - "$pip-$pip"
       protocol: "layer2"
       auto_assign: true
 EOF
-	fi
-	mi=`expr $mi + 1`
-    done
-    yq m --inplace --overwrite $OVERRIDES /tmp/metallb.yml
-    rm -f /tmp/metallb.yml
+	    fi
+	    mi=`expr $mi + 1`
+	done
+	yq m --inplace --overwrite $OVERRIDES /tmp/metallb.yml
+	rm -f /tmp/metallb.yml
+    else
+	echo "kube_proxy_strict_arp: true" >> $OVERRIDES
+	cat <<EOF >> $OVERRIDES
+metallb_enabled: true
+metallb_speaker_enabled: true
+EOF
+	mi=0
+	for pip in $PUBLICADDRS ; do
+	    if [ $mi -eq 0 ]; then
+		cat <<EOF >> $OVERRIDES
+metallb_ip_range:
+  - "$pip-$pip"
+metallb_protocol: "layer2"
+EOF
+	    else
+		if [ $mi -eq 1 ]; then
+		    cat <<EOF >> $OVERRIDES
+metallb_additional_address_pools:
+EOF
+		fi
+		cat <<EOF >> $OVERRIDES
+  kube_service_pool_$mi:
+    ip_range:
+      - "$pip-$pip"
+    protocol: "layer2"
+    auto_assign: true
+EOF
+	    fi
+	    mi=`expr $mi + 1`
+	done
+    fi
 fi
 
 #
