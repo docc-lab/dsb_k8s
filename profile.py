@@ -196,6 +196,19 @@ if params.kubeDoMetalLB and params.publicIPCount < 1:
         ["kubeDoMetalLB","publicIPCount"])
     pc.reportWarning(perr)
 
+# Handle shared vlan address param.
+(sharedVlanAddress,sharedVlanNetmask) = (None,None)
+if params.sharedVlanAddress:
+    aa = params.sharedVlanAddress.split('/')
+    if len(aa) != 2:
+        perr = portal.ParameterError(
+            "Invalid shared VLAN address!",
+            ['sharedVlanAddress'])
+        pc.reportError(perr)
+        pc.verifyParameters()
+    else:
+        (sharedVlanAddress,sharedVlanNetmask) = (aa[0],aa[1])
+
 #
 # Give the library a chance to return nice JSON-formatted exception(s) and/or
 # warnings; this might sys.exit().
