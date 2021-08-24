@@ -57,6 +57,21 @@ pc.defineParameter(
     portal.ParameterType.BOOLEAN,False,
     longDescription="Multiplex any networks over physical interfaces using VLANs.  Some physical machines have only a single experiment network interface, so if you want multiple links/LANs, you have to enable multiplexing.  Currently, if you select this option.",
     advanced=True)
+pc.defineParameter(
+    "createSharedVlan","Create Shared VLAN",
+    portal.ParameterType.BOOLEAN,False,
+    longDescription="Create a new shared VLAN with the name above, and connect node-0 to it.",
+    advanced=True)
+pc.defineParameter(
+    "connectSharedVlan","Shared VLAN Name",
+    portal.ParameterType.STRING,"",
+    longDescription="Connect `node-0` to a shared VLAN.  This allows your Kubernetes experiment to connect to another experiment.  If the shared VLAN does not yet exist (e.g. was not manually created for you by an administrator, or created in another experiment), enable the next option to create it.",
+    advanced=True)
+pc.defineParameter(
+    "sharedVlanAddress","Shared VLAN IP Address",
+    portal.ParameterType.STRING,"10.254.254.1/255.255.255.0",
+    longDescription="Set the IP address and subnet mask for the shared VLAN interface.  Make sure you choose an unused address within the subnet of an existing shared vlan!  Also ensure that you specify the subnet mask as a dotted quad.",
+    advanced=True)
 
 pc.defineParameter(
     "kubesprayRepo","Kubespray Git Repository",
@@ -248,6 +263,7 @@ if params.nodeCount > 1:
 
 nodes = dict({})
 
+sharedvlan = None
 for i in range(0,params.nodeCount):
     nodename = "node-%d" % (i,)
     node = RSpec.RawPC(nodename)
@@ -265,6 +281,22 @@ for i in range(0,params.nodeCount):
     if disableTestbedRootKeys:
         node.installRootKeys(False, False)
     nodes[nodename] = node
+    if i == 0 and params.connectSharedVlan:
+        iface = node.addInterface("ifSharedVlan")
+        if sharedVlanAddress:
+            iface.addAddress(
+                RSpec.IPv4Address(sharedVlanAddress,sharedVlanNetmask))
+        sharedvlan = RSpec.Link('shared-vlan')
+        sharedvlan.addInterface(iface)
+        if params.createSharedVlan:
+            sharedvlan.createSharedVlan(params.connectSharedVlan)
+        else:
+            sharedvlan.connectSharedVlan(params.connectSharedVlan)
+        if params.multiplexLans:
+            sharedvlan.link_multiplexing = True
+            sharedvlan.best_effort = True
+if sharedvlan:
+    rspec.addResource(sharedvlan)
 
 for nname in nodes.keys():
     rspec.addResource(nodes[nname])
