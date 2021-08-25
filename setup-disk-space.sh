@@ -87,7 +87,7 @@ elif [ -z "$LVM" ] ; then
     $SUDO lsblk -n -P -b -o NAME,FSTYPE,MOUNTPOINT,PARTTYPE,PARTUUID,TYPE,PKNAME,SIZE | perl -e 'my %devs = (); while (<STDIN>) { $_ =~ s/([A-Z0-9a-z]+=)/;\$$1/g; eval "$_"; if (!($TYPE eq "disk" || $TYPE eq "part")) { next; }; if (exists($devs{$PKNAME})) { delete $devs{$PKNAME}; } if ($FSTYPE eq "" && $MOUNTPOINT eq "" && ($PARTTYPE eq "" || $PARTTYPE eq "0x0") && (int($SIZE) > 3221225472)) { $devs{$NAME} = "/dev/$NAME"; } }; print join(" ",values(%devs))."\n"' > /tmp/devs
     DEVS=`cat /tmp/devs`
     if [ -n "$DEVS" ]; then
-	$SUDO pvcreate $DEVS && vgcreate $VGNAME $DEVS
+	$SUDO pvcreate $DEVS && $SUDO vgcreate $VGNAME $DEVS
 	if [ ! $? -eq 0 ]; then
 	    echo "ERROR: failed to create PV/VG with '$DEVS'; falling back to mkextrafs.pl"
 	    $SUDO vgremove $VGNAME
@@ -134,7 +134,7 @@ if [ $LVM -eq 1 ]; then
 	echo "/dev/$VGNAME/$LVNAME ${STORAGEDIR} ext4 defaults 0 0" \
 	    | $SUDO tee -a /etc/fstab
     else
-	mkfs.ext3 /dev/$VGNAME/$LVNAME
+	$SUDO mkfs.ext3 /dev/$VGNAME/$LVNAME
 	echo "/dev/$VGNAME/$LVNAME ${STORAGEDIR} ext3 defaults 0 0" \
 	    | $SUDO tee -a /etc/fstab
     fi
