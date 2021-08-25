@@ -27,7 +27,6 @@ if [ -f $LOCALSETTINGS ]; then
     . $LOCALSETTINGS
 fi
 
-STORAGEDIR=/storage
 VGNAME="emulab"
 ARCH=`uname -m`
 

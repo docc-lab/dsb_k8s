@@ -107,6 +107,10 @@ SINGLENODE_MGMT_NETMASK=255.255.0.0
 SINGLENODE_MGMT_NETBITS=16
 SINGLENODE_MGMT_CIDR=${SINGLENODE_MGMT_IP}/${SINGLENODE_MGMT_NETBITS}
 DOLOCALREGISTRY=1
+STORAGEDIR=/storage
+DONFS=1
+NFSEXPORTDIR=$STORAGEDIR/nfs
+NFSMOUNTDIR=/nfs
 
 #
 # We have an 'admin' user that gets a random password that comes in from
@@ -579,6 +583,23 @@ getnetmaskprefix() {
     fi
     prefix=`netmask2prefix $netmask`
     echo $prefix
+}
+
+getnetworkip() {
+    node=$1
+    network=$2
+    nodeip=`getnodeip $node $network`
+    netmask=`getnetmask $network`
+
+    IFS=.
+    read -r i1 i2 i3 i4 <<EOF
+$nodeip
+EOF
+    read -r m1 m2 m3 m4 <<EOF
+$netmask
+EOF
+    unset IFS
+    printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))"
 }
 
 ##
