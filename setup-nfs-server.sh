@@ -40,6 +40,10 @@ echo "rpcbind: ALL EXCEPT 127.0.0.1, $networkip/$prefix" | $SUDO tee -a /etc/hos
 
 service_enable rpcbind
 service_restart rpcbind
+service_enable rpc-statd
+service_restart rpc-statd
+service_enable nfs-idmapd
+service_restart nfs-idmapd
 service_enable nfs-kernel-server
 service_restart nfs-kernel-server
 
