@@ -225,27 +225,32 @@ if params.sharedVlanAddress:
 #
 pc.verifyParameters()
 
-tourDescription = \
-  "This profile creates a kubernetes cluster with kubespray.  When you click the Instantiate button, you'll be presented with a list of parameters that you can change to control what your kubernetes cluster will look like; read the parameter documentation on that page (or in the Instructions)."
-
-tourInstructions = \
+#
+# General kubernetes instruction text.
+#
+kubeInstructions = \
   """
-### Basic Instructions
-Once your experiment nodes have booted, and this profile's configuration scripts have finished configuring kubernetes inside your experiment, you'll be able to visit [the Kubernetes Dashboard WWW interface](https://{host-node-0}:8080/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/login) (approx. 10-15 minutes).
+## Waiting for your Experiment to Complete Setup
 
-The dashboard will not be available immediately.  There are multiple ways to determine if the scripts have finished.
+Once the initial phase of experiment creation completes (disk load and node configuration), the profile's setup scripts begin the complex process of installing software according to profile parameters, so you must wait to access software resources until they complete.  The Kubernetes dashboard link will not be available immediately.  There are multiple ways to determine if the scripts have finished.
   - First, you can watch the experiment status page: the overall State will say \"booted (startup services are still running)\" to indicate that the nodes have booted up, but the setup scripts are still running.
   - Second, the Topology View will show you, for each node, the status of the startup command on each node (the startup command kicks off the setup scripts on each node).  Once the startup command has finished on each node, the overall State field will change to \"ready\".  If any of the startup scripts fail, you can mouse over the failed node in the topology viewer for the status code.
-  - Third, the profile configuration scripts also send you two emails: once to notify you that kubernetes setup has started, and a second to notify you that setup has completed.  Once you receive the second email, you can login to the dashboard and begin your work.
-  - Finally, you can view [the profile setup script logfiles](http://{host-node-0}:7999/) as the setup scripts run.  Use the `admin` username and the automatically-generated random password `{password-adminPass}` .
+  - Third, the profile configuration scripts send emails: one to notify you that profile setup has started, and another notify you that setup has completed.
+  - Finally, you can view [the profile setup script logfiles](http://{host-node-0}:7999/) as the setup scripts run.  Use the `admin` username and the automatically-generated random password `{password-adminPass}` .  This URL is available very quickly after profile setup scripts begin work.
 
-Once the dashboard is available, you can login with either basic or token authentication.  (You may also supply a kubeconfig file, but we don't provide one that includes a secret by default.)
-  - `basic`: username `admin`, password `{password-adminPass}`
-  - `token`: copy the token from http://{host-node-0}:7999/admin-token.txt (this file is located on `node-0` in `/local/setup/admin-token.txt`)
+## Kubernetes credentials and dashboard access
+
+Once the profile's scripts have finished configuring software in your experiment, you'll be able to visit [the Kubernetes Dashboard WWW interface](https://{host-node-0}:8080/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/login) (approx. 10-15 minutes).
+
+The easiest login option is to use token authentication.  (Basic auth is configured if available, for older kubernetes versions, username `admin` password `{password-adminPass}`.  You may also supply a kubeconfig file, but we don't provide one that includes a secret by default, so you would have to generate that.)
+
+For `token` authentication: copy the token from http://{host-node-0}:7999/admin-token.txt (username `admin`, password `{password-adminPass}`) (this file is located on `node-0` in `/local/setup/admin-token.txt`).
 
 (To provide secure dashboard access, we run a `kube-proxy` instance that listens on localhost:8888 and accepts all incoming hosts, and export that via nginx proxy listening on `{host-node-0}:8080`.  We also create an `admin` `serviceaccount` in the `default` namespace, and that is the serviceaccount associated with the token auth option mentioned just above.)
 
 Kubernetes credentials are in `~/.kube/config`, or in `/root/.kube/config`, as you'd expect.
+
+## Changing your Kubernetes deployment
 
 The profile's setup scripts are automatically installed on each node in `/local/repository`, and all of the Kubernetes installation is triggered from `node-0`.  The scripts execute as your uid, and keep state and downloaded files in `/local/setup/`.  The scripts write copious logfiles in that directory; so if you think there's a problem with the configuration, you could take a quick look through these logs on the `node-0` node.  The primary logfile is `/local/setup/setup-driver.log`.
 
@@ -262,6 +267,14 @@ To change the Ansible and playbook configuration, you can start reading Kubespra
   - https://github.com/kubernetes-sigs/kubespray
   - https://kubespray.io/
 """
+
+#
+# Customizable area for forks.
+#
+tourDescription = \
+  "This profile creates a Kubernetes cluster with [Kubespray]().  When you click the Instantiate button, you'll be presented with a list of parameters that you can change to control what your Kubernetes cluster will look like; read the parameter documentation on that page (or in the Instructions)."
+
+tourInstructions = kubeInstructions
 
 #
 # Setup the Tour info with the above description and instructions.
