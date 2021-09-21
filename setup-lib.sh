@@ -13,7 +13,7 @@ LOCALSETTINGS=$OURDIR/settings.local
 TOPOMAP=$OURDIR/topomap
 BOOTDIR=/var/emulab/boot
 TMCC=/usr/local/etc/emulab/tmcc
-SWAPPER=`cat $BOOTDIR/swapper`
+SWAPPER=`geni-get user_urn | cut -f4 -d+`
 
 if [ -z "$EUID" ]; then
     EUID=`id -u`
@@ -329,8 +329,8 @@ if [ "x${ADMIN_PASS_HASH}" = "x" ] ; then
 fi
 
 EXPTTYPE="Kubernetes"
-CREATOR=`cat $BOOTDIR/creator`
-SWAPPER=`cat $BOOTDIR/swapper`
+CREATOR=`geni-get user_urn | cut -f4 -d+`
+SWAPPER=`geni-get user_urn | cut -f4 -d+`
 NODEID=`cat $BOOTDIR/nickname | cut -d . -f 1`
 PNODEID=`cat $BOOTDIR/nodeid`
 EEID=`cat $BOOTDIR/nickname | cut -d . -f 2`
