@@ -109,9 +109,10 @@ echo '[etcd]' >> $INV
 for node in `echo $NODES | cut -d ' ' -f-3` ; do
     echo "$node" >> $INV
 done
-# The last 2--N nodes are kube-node, unless there is only one node.
+# The last 2--N nodes are kube-node, unless there is only one node, or
+# if user allows.
 kubenodecount=2
-if [ "$NODES" = `echo $NODES | cut -d ' ' -f2` ]; then
+if [ $KUBEALLWORKERS -eq 1 -o "$NODES" = `echo $NODES | cut -d ' ' -f2` ]; then
     kubenodecount=1
 fi
 echo '[kube-node]' >> $INV

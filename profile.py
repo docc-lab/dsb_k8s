@@ -168,6 +168,11 @@ pc.defineParameter(
     longDescription="An integer max pods limit; 0 allows Kubernetes to use its default value (currently is 110; see https://kubespray.io/#/docs/vars and look for `kubelet_max_pods`).  Do not change this unless you know what you are doing.",
     advanced=True)
 pc.defineParameter(
+    "kubeAllWorkers","Kube Master is Worker",
+    portal.ParameterType.BOOLEAN,False,
+    longDescription="Allow the kube master to be a worker in the multi-node case (always true for single-node clusters); disabled by default.",
+    advanced=True)
+pc.defineParameter(
     "sslCertType","SSL Certificate Type",
     portal.ParameterType.STRING,"self",
     [("none","None"),("self","Self-Signed"),("letsencrypt","Let's Encrypt")],
