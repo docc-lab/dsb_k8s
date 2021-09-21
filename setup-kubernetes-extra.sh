@@ -34,12 +34,13 @@ service_start kube-proxy
 
 # Expose the dashboard IFF we have a certificate configuration
 if [ ! "$SSLCERTTYPE" = "none" -a "$SSLCERTCONFIG" = "proxy" ]; then
+    LCNFQDN=`echo $NFQDN | tr '[:upper:]' '[:lower:]'`
     if [ "$SSLCERTTYPE" = "self" ]; then
-	certpath="/etc/ssl/easy-rsa/${NFQDN}.crt"
-	keypath="/etc/ssl/easy-rsa/${NFQDN}.key"
+	certpath="/etc/ssl/easy-rsa/${LCNFQDN}.crt"
+	keypath="/etc/ssl/easy-rsa/${LCNFQDN}.key"
     elif [ "$SSLCERTTYPE" = "letsencrypt" ]; then
-	certpath="/etc/letsencrypt/live/${NFQDN}/fullchain.pem"
-	keypath="/etc/letsencrypt/live/${NFQDN}/privkey.pem"
+	certpath="/etc/letsencrypt/live/${LCNFQDN}/fullchain.pem"
+	keypath="/etc/letsencrypt/live/${LCNFQDN}/privkey.pem"
     fi
     cat <<EOF | $SUDO tee /etc/nginx/sites-available/k8s-dashboard
 map \$http_upgrade \$connection_upgrade {
