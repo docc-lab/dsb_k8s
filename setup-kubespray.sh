@@ -55,6 +55,7 @@ fi
 maybe_install_packages ${PYTHON}
 if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
     if [ -e $KUBESPRAY_VIRTUALENV ]; then
+	maybe_install_packages libffi-dev
 	. $KUBESPRAY_VIRTUALENV/bin/activate
     else
 	maybe_install_packages virtualenv
