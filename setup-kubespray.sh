@@ -71,7 +71,7 @@ if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
 else
     maybe_install_packages software-properties-common ${PYTHON}-pip
     $SUDO add-apt-repository --yes --update ppa:ansible/ansible
-    maybe_install_packages ansible
+    maybe_install_packages ansible libffi-dev
     $PIP install -r kubespray/requirements.txt
 fi
 
