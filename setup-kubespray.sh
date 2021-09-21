@@ -105,8 +105,12 @@ for node in `echo $NODES | cut -d ' ' -f-2` ; do
     echo "$node" >> $INV
 done
 # The first 3 nodes are etcd.
+etcdcount=3
+if [ $NODECOUNT -lt 3 ]; then
+    etcdcount=1
+fi
 echo '[etcd]' >> $INV
-for node in `echo $NODES | cut -d ' ' -f-3` ; do
+for node in `echo $NODES | cut -d ' ' -f-$etcdcount` ; do
     echo "$node" >> $INV
 done
 # The last 2--N nodes are kube-node, unless there is only one node, or
