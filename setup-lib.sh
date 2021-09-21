@@ -197,7 +197,7 @@ if [ ! $? -eq 0 ]; then
 	PYTHON=python3
     else
 	are_packages_installed python3
-	success=`expr $? = 1`
+	success=`expr $? = 0`
 	# Keep trying again with updated cache forever;
 	# we must have python.
 	while [ ! $success -eq 0 ]; do
@@ -225,7 +225,7 @@ PYTHONBIN=`which $PYTHON`
 ##
 are_packages_installed ${PYTHON}-cryptography ${PYTHON}-future \
     ${PYTHON}-six ${PYTHON}-lxml ${PYTHON}-pip
-success=`expr $? = 1`
+success=`expr $? = 0`
 # Keep trying again with updated cache forever;
 # we must have this package.
 while [ ! $success -eq 0 ]; do
