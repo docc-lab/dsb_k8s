@@ -36,8 +36,8 @@ service_start kube-proxy
 if [ ! "$SSLCERTTYPE" = "none" -a "$SSLCERTCONFIG" = "proxy" ]; then
     LCNFQDN=`echo $NFQDN | tr '[:upper:]' '[:lower:]'`
     if [ "$SSLCERTTYPE" = "self" ]; then
-	certpath="/etc/ssl/easy-rsa/${LCNFQDN}.crt"
-	keypath="/etc/ssl/easy-rsa/${LCNFQDN}.key"
+	certpath="/etc/ssl/easy-rsa/${NFQDN}.crt"
+	keypath="/etc/ssl/easy-rsa/${NFQDN}.key"
     elif [ "$SSLCERTTYPE" = "letsencrypt" ]; then
 	certpath="/etc/letsencrypt/live/${LCNFQDN}/fullchain.pem"
 	keypath="/etc/letsencrypt/live/${LCNFQDN}/privkey.pem"
