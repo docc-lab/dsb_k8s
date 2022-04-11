@@ -87,6 +87,7 @@ cp -pR kubespray/inventory/sample/group_vars $INVDIR
 mkdir -p $INVDIR/host_vars
 
 HEAD_MGMT_IP=`getnodeip $HEAD $MGMTLAN`
+HEAD_DATA_IP=`getnodeip $HEAD $DATALAN`
 INV=$INVDIR/inventory.ini
 
 echo '[all]' > $INV
@@ -221,7 +222,7 @@ if [ "$KUBENETWORKPLUGIN" = "calico" ]; then
     cat <<EOF >> $OVERRIDES
 kube_network_plugin: calico
 docker_iptables_enabled: true
-calico_ip_auto_method: "kubernetes-internal-ip"
+calico_ip_auto_method: "can-reach=$HEAD_DATA_IP"
 EOF
 elif [ "$KUBENETWORKPLUGIN" = "flannel" ]; then
 cat <<EOF >> $OVERRIDES
