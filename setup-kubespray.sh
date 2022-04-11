@@ -84,6 +84,7 @@ fi
 INVDIR=$OURDIR/inventories/kubernetes
 mkdir -p $INVDIR
 cp -pR kubespray/inventory/sample/group_vars $INVDIR
+mkdir -p $INVDIR/host_vars
 
 HEAD_MGMT_IP=`getnodeip $HEAD $MGMTLAN`
 INV=$INVDIR/inventory.ini
@@ -98,6 +99,13 @@ for node in $NODES ; do
 	accessip=`getcontrolip $node`
     fi
     echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$accessip" >> $INV
+
+    touch $INVDIR/host_vars/$node.yml
+    if [ "$KUBENETWORKPLUGIN" = "flannel" ]; then
+	cat <<EOF >> $INVDIR/host_vars/$node.yml
+flannel_interface: $dataip
+EOF
+    fi
 done
 # The first 2 nodes are kube-master.
 echo '[kube-master]' >> $INV
