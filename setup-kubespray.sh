@@ -221,6 +221,7 @@ if [ "$KUBENETWORKPLUGIN" = "calico" ]; then
     cat <<EOF >> $OVERRIDES
 kube_network_plugin: calico
 docker_iptables_enabled: true
+calico_ip_auto_method: "kubernetes-internal-ip"
 EOF
 elif [ "$KUBENETWORKPLUGIN" = "flannel" ]; then
 cat <<EOF >> $OVERRIDES
