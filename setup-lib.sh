@@ -604,6 +604,52 @@ EOF
     printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))"
 }
 
+#
+# Note that the `.`s are escaped enough to make it from shell into yaml into
+# ansible and eventually into the golang regexp used by flanneld.  Not
+# generic.
+#
+getnetworkregex() {
+    node=$1
+    network=$2
+    nodeip=`getnodeip $node $network`
+    netmask=`getnetmask $network`
+
+    IFS=.
+    read -r i1 i2 i3 i4 <<EOF
+$nodeip
+EOF
+    read -r m1 m2 m3 m4 <<EOF
+$netmask
+EOF
+    unset IFS
+    REGEX=""
+    if [ $m1 -ge 255 ]; then
+	REGEX="${REGEX}$i1"
+    else
+	REGEX="${REGEX}[0-9]{1,3}"
+    fi
+    REGEX="${REGEX}\\\\\\\\."
+    if [ $m2 -ge 255 ]; then
+	REGEX="${REGEX}$i2"
+    else
+	REGEX="${REGEX}[0-9]{1,3}"
+    fi
+    REGEX="${REGEX}\\\\\\\\."
+    if [ $m3 -ge 255 ]; then
+	REGEX="${REGEX}$i3"
+    else
+	REGEX="${REGEX}[0-9]{1,3}"
+    fi
+    REGEX="${REGEX}\\\\\\\\."
+    if [ $m4 -ge 255 ]; then
+	REGEX="${REGEX}$i4"
+    else
+	REGEX="${REGEX}[0-9]{1,3}"
+    fi
+    echo "$REGEX"
+}
+
 ##
 ## Util functions.
 ##

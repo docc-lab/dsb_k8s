@@ -84,8 +84,11 @@ fi
 INVDIR=$OURDIR/inventories/kubernetes
 mkdir -p $INVDIR
 cp -pR kubespray/inventory/sample/group_vars $INVDIR
+mkdir -p $INVDIR/host_vars
 
 HEAD_MGMT_IP=`getnodeip $HEAD $MGMTLAN`
+HEAD_DATA_IP=`getnodeip $HEAD $DATALAN`
+DATA_IP_REGEX=`getnetworkregex $HEAD $DATALAN`
 INV=$INVDIR/inventory.ini
 
 echo '[all]' > $INV
@@ -98,6 +101,8 @@ for node in $NODES ; do
 	accessip=`getcontrolip $node`
     fi
     echo "$node ansible_host=$mgmtip ip=$dataip access_ip=$accessip" >> $INV
+
+    touch $INVDIR/host_vars/$node.yml
 done
 # The first 2 nodes are kube-master.
 echo '[kube-master]' >> $INV
@@ -213,10 +218,12 @@ if [ "$KUBENETWORKPLUGIN" = "calico" ]; then
     cat <<EOF >> $OVERRIDES
 kube_network_plugin: calico
 docker_iptables_enabled: true
+calico_ip_auto_method: "can-reach=$HEAD_DATA_IP"
 EOF
 elif [ "$KUBENETWORKPLUGIN" = "flannel" ]; then
 cat <<EOF >> $OVERRIDES
 kube_network_plugin: flannel
+flannel_interface_regexp: '$DATA_IP_REGEX'
 EOF
 elif [ "$KUBENETWORKPLUGIN" = "weave" ]; then
 cat <<EOF >> $OVERRIDES
