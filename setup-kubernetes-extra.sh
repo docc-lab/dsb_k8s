@@ -21,7 +21,7 @@ After=kubelet.service
 Type=simple
 Restart=always
 User=root
-ExecStart=/bin/sh -c "kubectl proxy --accept-hosts='.*' --address=127.0.0.1 --port=8888"
+ExecStart=/bin/sh -c "kubectl proxy --accept-hosts='.*' --accept-paths='^/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/.*' --address=127.0.0.1 --port=8888"
 StandardOutput=journal+console
 StandardError=journal+console
 
