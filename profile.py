@@ -58,22 +58,6 @@ pc.defineParameter(
     longDescription="Multiplex any networks over physical interfaces using VLANs.  Some physical machines have only a single experiment network interface, so if you want multiple links/LANs, you have to enable multiplexing.  Currently, if you select this option.",
     advanced=True)
 pc.defineParameter(
-    "createSharedVlan","Create Shared VLAN",
-    portal.ParameterType.BOOLEAN,False,
-    longDescription="Create a new shared VLAN with the name above, and connect node-0 to it.",
-    advanced=True)
-pc.defineParameter(
-    "connectSharedVlan","Shared VLAN Name",
-    portal.ParameterType.STRING,"",
-    longDescription="Connect `node-0` to a shared VLAN.  This allows your Kubernetes experiment to connect to another experiment.  If the shared VLAN does not yet exist (e.g. was not manually created for you by an administrator, or created in another experiment), enable the next option to create it.",
-    advanced=True)
-pc.defineParameter(
-    "sharedVlanAddress","Shared VLAN IP Address",
-    portal.ParameterType.STRING,"10.254.254.1/255.255.255.0",
-    longDescription="Set the IP address and subnet mask for the shared VLAN interface.  Make sure you choose an unused address within the subnet of an existing shared vlan!  Also ensure that you specify the subnet mask as a dotted quad.",
-    advanced=True)
-
-pc.defineParameter(
     "kubesprayRepo","Kubespray Git Repository",
     portal.ParameterType.STRING,
     "https://github.com/kubernetes-incubator/kubespray.git",
@@ -194,6 +178,54 @@ pc.defineParameter(
     portal.ParameterType.BOOLEAN,False,
     longDescription="Force the default NFS volume to be exported `async`.  When enabled, clients will only be given asynchronous write behavior even if they request sync or write with sync flags.  This is dangerous, but some applications that rely on persistent storage cannot be configured to use more helpful sync options (e.g., fsync instead of O_DIRECT).  It will give you the absolute best performance, however.",
     advanced=True)
+pc.defineStructParameter(
+    "sharedVlans","Add Shared VLAN",[],
+    multiValue=True,itemDefaultValue={},min=0,max=None,
+    members=[
+        portal.Parameter(
+            "createConnectableSharedVlan","Create Connectable Shared VLAN",
+            portal.ParameterType.BOOLEAN,False,
+            longDescription="Create a placeholder, connectable shared VLAN stub and 'attach' the first node to it.  You can use this during the experiment to connect this experiment interface to another experiment's shared VLAN."),
+        portal.Parameter(
+            "createSharedVlan","Create Shared VLAN",
+            portal.ParameterType.BOOLEAN,False,
+            longDescription="Create a new shared VLAN with the name above, and connect the first node to it."),
+        portal.Parameter(
+            "connectSharedVlan","Connect to Shared VLAN",
+            portal.ParameterType.BOOLEAN,False,
+            longDescription="Connect an existing shared VLAN with the name below to the first node."),
+        portal.Parameter(
+            "sharedVlanName","Shared VLAN Name",
+            portal.ParameterType.STRING,"",
+            longDescription="A shared VLAN name (functions as a private key allowing other experiments to connect to this node/VLAN), used when the 'Create Shared VLAN' or 'Connect to Shared VLAN' options above are selected.  Must be fewer than 32 alphanumeric characters."),
+        portal.Parameter(
+            "sharedVlanAddress","Shared VLAN IP Address",
+            portal.ParameterType.STRING,"10.254.254.1",
+            longDescription="Set the IP address for the shared VLAN interface.  Make sure to use an unused address within the subnet of an existing shared vlan!"),
+        portal.Parameter(
+            "sharedVlanNetmask","Shared VLAN Netmask",
+            portal.ParameterType.STRING,"255.255.255.0",
+            longDescription="Set the subnet mask for the shared VLAN interface, as a dotted quad.")])
+pc.defineStructParameter(
+    "datasets","Datasets",[],
+    multiValue=True,itemDefaultValue={},min=0,max=None,
+    members=[
+        portal.Parameter(
+            "urn","Dataset URN",
+            portal.ParameterType.STRING,"",
+            longDescription="The URN of an *existing* remote dataset (a remote block store) that you want attached to the node you specified (defaults to the first node).  The block store must exist at the cluster at which you instantiate the profile."),
+        portal.Parameter(
+            "mountNode","Dataset Mount Node",
+            portal.ParameterType.STRING,"node-0",
+            longDescription="The node on which you want your remote block store mounted; defaults to the first node."),
+        portal.Parameter(
+            "mountPoint","Dataset Mount Point",
+            portal.ParameterType.STRING,"/dataset",
+            longDescription="The mount point at which you want your remote dataset mounted.  Be careful where you mount it -- something might already be there (i.e., /storage is already taken).  Note also that this option requires a network interface, because it creates a link between the dataset and the node where the dataset is available.  Thus, just as for creating extra LANs, you might need to select the Multiplex Flat Networks option, which will also multiplex the blockstore link here."),
+        portal.Parameter(
+            "readOnly","Mount Dataset Read-only",
+            portal.ParameterType.BOOLEAN,True,
+            longDescription="Mount the remote dataset in read-only mode.")])
 
 #
 # Get any input parameter values that will override our defaults.
@@ -210,19 +242,30 @@ if params.kubeDoMetalLB and params.publicIPCount < 1:
         "If you enable MetalLB, you must request at least one public IP address!",
         ["kubeDoMetalLB","publicIPCount"])
     pc.reportWarning(perr)
-
-# Handle shared vlan address param.
-(sharedVlanAddress,sharedVlanNetmask) = (None,None)
-if params.sharedVlanAddress:
-    aa = params.sharedVlanAddress.split('/')
-    if len(aa) != 2:
-        perr = portal.ParameterError(
-            "Invalid shared VLAN address!",
-            ['sharedVlanAddress'])
-        pc.reportError(perr)
-        pc.verifyParameters()
-    else:
-        (sharedVlanAddress,sharedVlanNetmask) = (aa[0],aa[1])
+i = 0
+for x in params.sharedVlans:
+    n = 0
+    if x.createConnectableSharedVlan:
+        n += 1
+    if x.createSharedVlan:
+        n += 1
+    if x.connectSharedVlan:
+        n += 1
+    if n > 1:
+        err = portal.ParameterError(
+            "Must choose only a single shared vlan operation (create, connect, create connectable)",
+        [ 'sharedVlans[%d].createConnectableSharedVlan' % (i,),
+          'sharedVlans[%d].createSharedVlan' % (i,),
+          'sharedVlans[%d].connectSharedVlan' % (i,) ])
+        pc.reportError(err)
+    if n == 0:
+        err = portal.ParameterError(
+            "Must choose one of the shared vlan operations: create, connect, create connectable",
+        [ 'sharedVlans[%d].createConnectableSharedVlan' % (i,),
+          'sharedVlans[%d].createSharedVlan' % (i,),
+          'sharedVlans[%d].connectSharedVlan' % (i,) ])
+        pc.reportError(err)
+    i += 1
 
 #
 # Give the library a chance to return nice JSON-formatted exception(s) and/or
@@ -304,7 +347,7 @@ if params.nodeCount > 1:
 
 nodes = dict({})
 
-sharedvlan = None
+sharedvlans = []
 for i in range(0,params.nodeCount):
     nodename = "node-%d" % (i,)
     node = RSpec.RawPC(nodename)
@@ -322,27 +365,72 @@ for i in range(0,params.nodeCount):
     if disableTestbedRootKeys:
         node.installRootKeys(False, False)
     nodes[nodename] = node
-    if i == 0 and params.connectSharedVlan:
-        iface = node.addInterface("ifSharedVlan")
-        if sharedVlanAddress:
-            iface.addAddress(
-                RSpec.IPv4Address(sharedVlanAddress,sharedVlanNetmask))
-        sharedvlan = RSpec.Link('shared-vlan')
-        sharedvlan.addInterface(iface)
-        if params.createSharedVlan:
-            sharedvlan.createSharedVlan(params.connectSharedVlan)
-        else:
-            sharedvlan.connectSharedVlan(params.connectSharedVlan)
-        if params.multiplexLans:
-            sharedvlan.link_multiplexing = True
-            sharedvlan.best_effort = True
-if sharedvlan:
-    rspec.addResource(sharedvlan)
+    if i == 0:
+        k = 0
+        for x in params.sharedVlans:
+            iface = node.addInterface("ifSharedVlan%d" % (k,))
+            if x.sharedVlanAddress:
+                iface.addAddress(
+                    RSpec.IPv4Address(x.sharedVlanAddress,x.sharedVlanNetmask))
+            sharedvlan = RSpec.Link('shared-vlan-%d' % (k,))
+            sharedvlan.addInterface(iface)
+            if x.createConnectableSharedVlan:
+                sharedvlan.enableSharedVlan()
+            else:
+                if x.createSharedVlan:
+                    sharedvlan.createSharedVlan(x.sharedVlanName)
+                else:
+                    sharedvlan.connectSharedVlan(x.sharedVlanName)
+            if params.multiplexLans:
+                sharedvlan.link_multiplexing = True
+                sharedvlan.best_effort = True
+            sharedvlans.append(sharedvlan)
+            k += 1
+
+#
+# Add the dataset(s), if requested.
+#
+bsnodes = []
+bslinks = []
+i = 0
+for x in params.datasets:
+    if not x.urn:
+        err = portal.ParameterError(
+            "Must provide a non-null dataset URN",
+            [ 'datasets[%d].urn' % (i,) ])
+        pc.reportError(err)
+        pc.verifyParameters()
+    if x.mountNode not in nodes:
+        perr = portal.ParameterError(
+            "The node on which you mount your dataset must exist, and does not.",
+            [ 'datasets[%d].mountNode' % (i,) ])
+        pc.reportError(perr)
+        pc.verifyParameters()
+    bsn = nodes[x.mountNode]
+    myintf = bsn.addInterface("ifbs%d" % (i,))
+    bsnode = IG.RemoteBlockstore("bsnode-%d" % (i,),x.mountPoint)
+    bsintf = bsnode.interface
+    bsnode.dataset = x.urn
+    bsnode.readonly = x.readOnly
+    bsnodes.append(bsnode)
+
+    bslink = RSpec.Link("bslink-%d" % (i,))
+    bslink.addInterface(myintf)
+    bslink.addInterface(bsintf)
+    bslink.best_effort = True
+    bslink.vlan_tagging = True
+    bslinks.append(bslink)
 
 for nname in nodes.keys():
     rspec.addResource(nodes[nname])
 for datalan in datalans:
     rspec.addResource(datalan)
+for x in sharedvlans:
+    rspec.addResource(x)
+for x in bsnodes:
+    rspec.addResource(x)
+for x in bslinks:
+    rspec.addResource(x)
 
 class EmulabEncrypt(RSpec.Resource):
     def _write(self, root):
