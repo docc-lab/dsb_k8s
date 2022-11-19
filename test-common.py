@@ -35,7 +35,10 @@ try:
     import httplib
 except:
     from urllib.parse import urlsplit, urlunsplit
-    from urllib.request import splitport
+    try:
+        from urllib.request import splitport
+    except:
+        from urllib.parse import splitport
     import xmlrpc.client as xmlrpclib
     import http.client as httplib
 import os
