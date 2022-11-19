@@ -11,7 +11,7 @@ fi
 
 logtstart "letsencrypt"
 
-maybe_install_packages python-certbot-nginx
+maybe_install_packages ${PYTHONPKGPREFIX}-certbot-nginx
 $SUDO certbot certonly -d $NFQDN --nginx --agree-tos -m "$SWAPPER_EMAIL" -n
 $SUDO mkdir -p /etc/nginx/ssl
 #$SUDO cp -p /etc/letsencrypt/live/$NFQDN/*.pem /etc/nginx/ssl/
