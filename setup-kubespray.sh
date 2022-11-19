@@ -70,7 +70,7 @@ if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
 	$PIP install ansible==2.9
     fi
 else
-    maybe_install_packages software-properties-common ${PYTHON}-pip
+    maybe_install_packages software-properties-common ${PYTHONPKGPREFIX}-pip
     $SUDO add-apt-repository --yes --update ppa:ansible/ansible
     maybe_install_packages ansible libffi-dev
     $PIP install -r kubespray/requirements.txt
