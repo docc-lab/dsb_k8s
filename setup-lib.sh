@@ -222,6 +222,20 @@ else
     PYTHONPKGPREFIX=python
 fi
 PYTHONBIN=`which $PYTHON`
+# Some kubesprays uninstall python-is-python3 and replace with
+# python-is-python2; we cannot have that.
+if [ ! -e $OURDIR/python-is-what ]; then
+    are_packages_installed python-is-python3
+    if [ $? -eq 1 ]; then
+	echo python-is-python3 > $OURDIR/python-is-what
+    else
+	are_packages_installed python-is-python2
+	if [ $? -eq 1 ]; then
+	    echo python-is-python2 > $OURDIR/python-is-what
+	fi
+    fi
+    touch $OURDIR/python-is-what
+fi
 
 ##
 ## Grab our geni creds, and create a GENI credential cert

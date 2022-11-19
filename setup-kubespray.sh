@@ -377,6 +377,11 @@ if [ ! $? -eq 0 ]; then
 fi
 cd ..
 
+# kubespray sometimes installs python-is-python2; we can't allow that.
+if [ -s $OURDIR/python-is-what ]; then
+    maybe_install_packages `cat $OURDIR/python-is-what`
+fi
+
 $SUDO rm -rf /root/.kube
 $SUDO mkdir -p /root/.kube
 $SUDO cp -p $INVDIR/artifacts/admin.conf /root/.kube/config
