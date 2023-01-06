@@ -142,7 +142,11 @@ fi
 
 do_apt_update() {
     if [ ! -f $OURDIR/apt-updated -a "${DO_APT_UPDATE}" = "1" ]; then
-	$SUDO apt-get update
+	while true ; do
+	    $SUDO apt-get update && break
+	    echo "ERROR: apt-get update failed; pausing to try again"
+	    sleep 60
+	done
 	touch $OURDIR/apt-updated
     fi
 }
