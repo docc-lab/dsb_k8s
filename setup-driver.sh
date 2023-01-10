@@ -2,6 +2,9 @@
 
 set -x
 
+# Preserve legacy main logfile location
+ln -s /local/logs/setup.log /local/setup/setup-driver.log
+
 ALLNODESCRIPTS="setup-ssh.sh setup-disk-space.sh"
 HEADNODESCRIPTS="setup-nfs-server.sh setup-nginx.sh setup-ssl.sh setup-kubespray.sh setup-kubernetes-extra.sh setup-end.sh"
 WORKERNODESCRIPTS="setup-nfs-client.sh"
@@ -17,17 +20,17 @@ if [ -f $OURDIR/setup-driver-done ]; then
 fi
 for script in $ALLNODESCRIPTS ; do
     cd $SRC
-    $SRC/$script | tee - $OURDIR/${script}.log 2>&1
+    $SRC/$script | tee - /local/logs/${script}.log 2>&1
 done
 if [ "$HOSTNAME" = "node-0" ]; then
     for script in $HEADNODESCRIPTS ; do
 	cd $SRC
-	$SRC/$script | tee - $OURDIR/${script}.log 2>&1
+	$SRC/$script | tee - /local/logs/${script}.log 2>&1
     done
 else
     for script in $WORKERNODESCRIPTS ; do
 	cd $SRC
-	$SRC/$script | tee - $OURDIR/${script}.log 2>&1
+	$SRC/$script | tee - /local/logs/${script}.log 2>&1
     done
 fi
 
