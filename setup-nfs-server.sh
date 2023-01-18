@@ -22,6 +22,10 @@ if [ -f $LOCALSETTINGS ]; then
     . $LOCALSETTINGS
 fi
 
+if [ -z "$DONFS" -o ! "$DONFS" = "1" ]; then
+    exit 0
+fi
+
 maybe_install_packages nfs-kernel-server
 service_stop nfs-kernel-server
 

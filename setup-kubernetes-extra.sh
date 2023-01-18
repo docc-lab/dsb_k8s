@@ -96,6 +96,29 @@ if [ "$DOLOCALREGISTRY" = "1" ]; then
     $SUDO docker start local-registry
 fi
 
+# If the user wanted NFS, make a dynamic nfs subdir provisioner the default
+# storageclass.
+if [ -n "$DONFS" -a "$DONFS" = "1" ]; then
+    NFSSERVERIP=`getnodeip $HEAD $DATALAN`
+    helm repo add nfs-subdir-external-provisioner \
+        https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+    helm repo update
+    cat <<EOF >$OURDIR/nfs-provisioner-values.yaml
+nfs:
+  server: "$NFSSERVERIP"
+  path: $NFSMOUNTDIR
+  mountOptions:
+    - "nfsvers=3"
+storageClass:
+  defaultClass: true
+EOF
+    helm install nfs-subdir-external-provisioner \
+        nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+	-f $OURDIR/nfs-provisioner-values.yaml --wait
+fi
+
+
+
 logtend "kubernetes-extra"
 touch $OURDIR/kubernetes-extra-done
 exit 0
