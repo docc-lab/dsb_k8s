@@ -41,6 +41,8 @@ if [ -n "$NFSASYNC" -a $NFSASYNC -eq 1 ]; then
     syncopt="async"
 fi
 echo "$NFSEXPORTDIR $networkip/$prefix(rw,$syncopt,no_root_squash,no_subtree_check,fsid=0)" | $SUDO tee -a /etc/exports
+echo "$NFSEXPORTDIR $KUBEPODSSUBNET(rw,$syncopt,no_root_squash,no_subtree_check,fsid=0)" | $SUDO tee -a /etc/exports
+echo "$NFSEXPORTDIR $KUBESERVICEADDRESSES(rw,$syncopt,no_root_squash,no_subtree_check,fsid=0)" | $SUDO tee -a /etc/exports
 
 echo "OPTIONS=\"-l -h 127.0.0.1 -h $dataip\"" | $SUDO tee /etc/default/rpcbind
 $SUDO sed -i.bak -e "s/^rpcbind/#rpcbind/" /etc/hosts.deny
