@@ -106,7 +106,7 @@ if [ -n "$DONFS" -a "$DONFS" = "1" ]; then
     cat <<EOF >$OURDIR/nfs-provisioner-values.yaml
 nfs:
   server: "$NFSSERVERIP"
-  path: $NFSMOUNTDIR
+  path: $NFSEXPORTDIR
   mountOptions:
     - "nfsvers=3"
 storageClass:
