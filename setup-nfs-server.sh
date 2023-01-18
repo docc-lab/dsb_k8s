@@ -44,7 +44,11 @@ echo "$NFSEXPORTDIR $networkip/$prefix(rw,$syncopt,no_root_squash,no_subtree_che
 
 echo "OPTIONS=\"-l -h 127.0.0.1 -h $dataip\"" | $SUDO tee /etc/default/rpcbind
 $SUDO sed -i.bak -e "s/^rpcbind/#rpcbind/" /etc/hosts.deny
-echo "rpcbind: ALL EXCEPT 127.0.0.1, $networkip/$prefix" | $SUDO tee -a /etc/hosts.deny
+echo "rpcbind: ALL EXCEPT 127.0.0.1, $networkip/$prefix, $KUBEPODSSUBNET, $KUBESERVICEADDRESSES" | $SUDO tee -a /etc/hosts.deny
+echo "portmapper: ALL EXCEPT 127.0.0.1, $networkip/$prefix, $KUBEPODSSUBNET, $KUBESERVICEADDRESSES" | $SUDO tee -a /etc/hosts.deny
+echo "mountd: ALL EXCEPT 127.0.0.1, $networkip/$prefix, $KUBEPODSSUBNET, $KUBESERVICEADDRESSES" | $SUDO tee -a /etc/hosts.deny
+echo "statd: ALL EXCEPT 127.0.0.1, $networkip/$prefix, $KUBEPODSSUBNET, $KUBESERVICEADDRESSES" | $SUDO tee -a /etc/hosts.deny
+echo "lockd: ALL EXCEPT 127.0.0.1, $networkip/$prefix, $KUBEPODSSUBNET, $KUBESERVICEADDRESSES" | $SUDO tee -a /etc/hosts.deny
 
 service_enable rpcbind
 service_restart rpcbind
