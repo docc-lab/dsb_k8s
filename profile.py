@@ -8,6 +8,8 @@ import geni.rspec.emulab as emulab
 from lxml import etree as ET
 import crypt
 import random
+import os
+import hashlib
 import os.path
 import sys
 
@@ -249,6 +251,9 @@ for x in params.sharedVlans:
         n += 1
     if x.createSharedVlan:
         n += 1
+        if not x.sharedVlanName:
+            # Create a random name
+            x.sharedVlanName = "sv-" + str(hashlib.sha256(os.urandom(128)).hexdigest()[:28])
     if x.connectSharedVlan:
         n += 1
     if n > 1:
