@@ -251,9 +251,6 @@ for x in params.sharedVlans:
         n += 1
     if x.createSharedVlan:
         n += 1
-        if not x.sharedVlanName:
-            # Create a random name
-            x.sharedVlanName = "sv-" + str(hashlib.sha256(os.urandom(128)).hexdigest()[:28])
     if x.connectSharedVlan:
         n += 1
     if n > 1:
@@ -383,7 +380,11 @@ for i in range(0,params.nodeCount):
                 sharedvlan.enableSharedVlan()
             else:
                 if x.createSharedVlan:
-                    sharedvlan.createSharedVlan(x.sharedVlanName)
+                    svn = x.sharedVlanName
+                    if not svn:
+                        # Create a random name
+                        svn = "sv-" + str(hashlib.sha256(os.urandom(128)).hexdigest()[:28])
+                    sharedvlan.createSharedVlan(svn)
                 else:
                     sharedvlan.connectSharedVlan(x.sharedVlanName)
             if params.multiplexLans:
