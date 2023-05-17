@@ -185,6 +185,8 @@ maybe_install_packages() {
 	    if [ $? -eq 0 ]; then
 		$APTGETINSTALL $1
 		retval=`expr $retval \| $?`
+	    else
+		retval=0
 	    fi
 	    shift
 	done
