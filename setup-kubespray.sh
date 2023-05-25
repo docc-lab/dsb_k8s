@@ -509,7 +509,17 @@ mkdir -p /users/$SWAPPER/.kube
 cp -p $INVDIR/artifacts/admin.conf /users/$SWAPPER/.kube/config
 chown -R $SWAPPER /users/$SWAPPER/.kube
 
-kubectl wait pod -n kube-system --for=condition=Ready --all
+tries=60
+while [ $tries -gt 0 ]; do
+    kubectl wait pod -n kube-system --for=condition=Ready --all
+    if [ $? -eq 0 ]; then
+	break
+    else
+	tries=`expr $tries - 1`
+	echo "WARNING: waiting for kube-system pods to be Ready ($tries remaining)"
+	sleep 5
+    fi
+done
 
 logtend "kubespray"
 touch $OURDIR/kubespray-done
