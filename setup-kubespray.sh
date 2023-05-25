@@ -191,6 +191,17 @@ dns_min_replicas: 1
 dashboard_enabled: true
 dashboard_token_ttl: 43200
 EOF
+if [ "${CONTAINERMANAGER}" = "docker" ]; then
+    cat <<EOF >> $OVERRIDES
+container_manager: ${CONTAINERMANAGER}
+docker_storage_options: -s overlay2
+EOF
+elif [ "${CONTAINERMANAGER}" = "containerd" ]; then
+    cat <<EOF >> $OVERRIDES
+container_manager: ${CONTAINERMANAGER}
+etcd_deployment_type: host
+EOF
+fi
 if [ -n "${DOCKERVERSION}" ]; then
     cat <<EOF >> $OVERRIDES
 docker_version: ${DOCKERVERSION}
@@ -377,6 +388,33 @@ if [ ! $? -eq 0 ]; then
 fi
 cd ..
 
+#
+# Verify that things generally look promising.
+#
+which kubectl
+if [ ! $? -eq 0 ]; then
+    echo "ERROR: kubectl not present; aborting"
+    exit 1
+fi
+which helm
+if [ ! $? -eq 0 ]; then
+    echo "ERROR: helm not present; aborting"
+    exit 1
+fi
+if [ "$CONTAINERMANAGER" = "docker" ]; then
+    which docker
+    if [ ! $? -eq 0 ]; then
+	echo "ERROR: docker not present; aborting"
+	exit 1
+    fi
+elif [ "$CONTAINERMANAGER" = "containerd" ]; then
+    which ctr
+    if [ ! $? -eq 0 ]; then
+	echo "ERROR: ctr (containerd cli) not present; aborting"
+	exit 1
+    fi
+fi
+
 # kubespray sometimes installs python-is-python2; we can't allow that.
 if [ -s $OURDIR/python-is-what ]; then
     maybe_install_packages `cat $OURDIR/python-is-what`
@@ -392,31 +430,6 @@ cp -p $INVDIR/artifacts/admin.conf /users/$SWAPPER/.kube/config
 chown -R $SWAPPER /users/$SWAPPER/.kube
 
 kubectl wait pod -n kube-system --for=condition=Ready --all
-
-#
-# If helm is not installed, do that manually.  Seems that there is a
-# kubespray bug (release-2.11) that causes this.
-#
-which helm
-if [ ! $? -eq 0 -a -n "${HELM_VERSION}" ]; then
-    wget https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz
-    tar -xzvf helm-${HELM_VERSION}-linux-amd64.tar.gz
-    $SUDO mv linux-amd64/helm /usr/local/bin/helm
-
-    helm init --upgrade --force-upgrade --stable-repo-url "https://charts.helm.sh/stable"
-    kubectl create serviceaccount --namespace kube-system tiller
-    kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-    kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
-    helm init --service-account tiller --upgrade
-    while [ 1 ]; do
-	helm ls
-	if [ $? -eq 0 ]; then
-	    break
-	fi
-	sleep 4
-    done
-    kubectl wait pod -n kube-system --for=condition=Ready --all
-fi
 
 logtend "kubespray"
 touch $OURDIR/kubespray-done
