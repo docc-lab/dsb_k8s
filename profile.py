@@ -68,7 +68,7 @@ pc.defineParameter(
 pc.defineParameter(
     "kubesprayVersion","Kubespray Version",
     portal.ParameterType.STRING,"release-2.20",
-    longDescription="A tag or commit-ish value; we will run `git checkout <value>`.  The default value is the most recent stable value we have tested.  You should only change this if you need a new feature only available on `master`, or an old feature from a prior release.  We support versions back to release-2.13 only.  Ubuntu 22 supports only release-2.19 and greater.  You will need to use Ubuntu 20 for anything prior to that.",
+    longDescription="A tag or commit-ish value; we will run `git checkout <value>`.  The default value is the most recent stable value we have tested.  You should only change this if you need a new feature only available on `master`, or an old feature from a prior release.  We support versions back to release-2.13 only.  Ubuntu 22 supports only release-2.20 and greater.  You will need to use Ubuntu 20 for anything prior to that.",
     advanced=True)
 pc.defineParameter(
     "kubesprayUseVirtualenv","Kubespray VirtualEnv",
