@@ -86,9 +86,9 @@ pc.defineParameter(
     longDescription="A specific release of Helm to install (e.g. v2.12.3); if left empty, Kubespray will choose its current stable version and install that.  Note that the version you pick must exist as a tag in this Docker image repository: https://hub.docker.com/r/lachlanevenson/k8s-helm/tags .",
     advanced=True)
 pc.defineParameter(
-    "containerManager","docker",
-    [("docker","docker"),("containerd","containerd")]
-    portal.ParameterType.STRING,"",
+    "containerManager","Container Manager",
+    portal.ParameterType.STRING,"docker",
+    [("docker","docker"),("containerd","containerd")],
     longDescription="The container manager to use; either docker or containerd.",
     advanced=True)
 pc.defineParameter(
