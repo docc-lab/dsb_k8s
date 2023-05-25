@@ -371,6 +371,84 @@ EOF
 	    fi
 	    mi=`expr $mi + 1`
 	done
+
+	#
+	# Allow metallb to operate on the master node.  Not sure we really
+	# need this, it's never been a problem; but the docs
+	# (https://kubespray.io/#/docs/metallb) tell us to do so.
+	#
+	if [ $NODECOUNT -eq 1 -o $KUBEALLWORKERS -eq 1 ]; then
+	    cat <<EOF >> $OVERRIDES
+emetallb_controller_tolerations:
+  - key: "node-role.kubernetes.io/master"
+    operator: "Equal"
+    value: ""
+    effect: "NoSchedule"
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Equal"
+    value: ""
+    effect: "NoSchedule"
+EOF
+	fi
+
+	#
+	# release-2.22 and up moves all the config into metallb_config.  So
+	# we just blast that in unconditionally; won't hurt anything; older
+	# releases don't reference it at all.
+	#
+	cat <<EOF >> $OVERRIDES
+metallb_config:
+  address_pools:
+EOF
+	mi=0
+	for pip in $PUBLICADDRS ; do
+	    if [ $mi -eq 0 ]; then
+		cat <<EOF >> $OVERRIDES
+    primary:
+      ip_range:
+        - "$pip-$pip"
+      auto_assign: true
+EOF
+	    else
+		cat <<EOF >> $OVERRIDES
+    pool$mi:
+      ip_range:
+        - "$pip-$pip"
+      auto_assign: true
+EOF
+	    fi
+	    mi=`expr $mi + 1`
+	done
+	cat <<EOF >> $OVERRIDES
+  layer2:
+EOF
+	mi=0
+	for pip in $PUBLICADDRS ; do
+	    if [ $mi -eq 0 ]; then
+		cat <<EOF >> $OVERRIDES
+    - primary
+EOF
+	    else
+		cat <<EOF >> $OVERRIDES
+    - pool$mi
+EOF
+	    fi
+	    mi=`expr $mi + 1`
+	done
+	if [ $NODECOUNT -eq 1 -o $KUBEALLWORKERS -eq 1 ]; then
+	    cat <<EOF >> $OVERRIDES
+  controller:
+    tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Equal"
+        value: ""
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Equal"
+        value: ""
+        effect: "NoSchedule"
+EOF
+	fi
     fi
 fi
 
