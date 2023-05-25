@@ -11,6 +11,8 @@ fi
 
 logtstart "kubernetes-extra"
 
+maybe_install_packages pssh
+
 # Create a localhost kube-proxy service and fire it off.
 cat <<'EOF' | $SUDO tee /etc/systemd/system/kube-proxy.service
 [Unit]
