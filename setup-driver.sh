@@ -21,16 +21,28 @@ fi
 for script in $ALLNODESCRIPTS ; do
     cd $SRC
     $SRC/$script | tee - /local/logs/${script}.log 2>&1
+    if [ ! $PIPESTATUS -eq 0 ]; then
+	echo "ERROR: ${script} failed; aborting driver!"
+	exit 1
+    fi
 done
 if [ "$HOSTNAME" = "node-0" ]; then
     for script in $HEADNODESCRIPTS ; do
 	cd $SRC
 	$SRC/$script | tee - /local/logs/${script}.log 2>&1
+	if [ ! $PIPESTATUS -eq 0 ]; then
+	    echo "ERROR: ${script} failed; aborting driver!"
+	    exit 1
+	fi
     done
 else
     for script in $WORKERNODESCRIPTS ; do
 	cd $SRC
 	$SRC/$script | tee - /local/logs/${script}.log 2>&1
+	if [ ! $PIPESTATUS -eq 0 ]; then
+	    echo "ERROR: ${script} failed; aborting driver!"
+	    exit 1
+	fi
     done
 fi
 
