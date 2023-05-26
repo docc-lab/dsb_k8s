@@ -79,11 +79,13 @@ fi
 # the profile-setup web dir.
 kubectl create serviceaccount admin -n default
 kubectl create clusterrolebinding cluster-default-admin --clusterrole=cluster-admin --serviceaccount=default:admin
-secretid=`kubectl get serviceaccount admin -n default -o 'go-template={{(index .secrets 0).name}}'`
-#
-# Newer kubernetes lacks automatic secrets for serviceaccounts.
-#
-if [ -z "$secretid" ]; then
+hassecret=`kubectl get serviceaccount admin -n default -o 'jsonpath={.secrets}'`
+if [ -n "$hassecret" ]; then
+    secretid=`kubectl get serviceaccount admin -n default -o 'go-template={{(index .secrets 0).name}}'`
+else
+    #
+    # Newer kubernetes lacks automatic secrets for serviceaccounts.
+    #
     kubectl -n default apply -f - <<EOF
 apiVersion: v1
 kind: Secret
