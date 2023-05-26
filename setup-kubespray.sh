@@ -53,6 +53,7 @@ fi
 # Get Ansible and the kubespray python reqs installed.
 #
 maybe_install_packages ${PYTHON}
+maybe_install_packages ${PYTHONPKGPREFIX}-apt
 if [ $KUBESPRAYUSEVIRTUALENV -eq 1 ]; then
     if [ -e $KUBESPRAY_VIRTUALENV ]; then
 	maybe_install_packages libffi-dev
