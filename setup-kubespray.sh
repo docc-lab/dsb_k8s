@@ -379,7 +379,7 @@ EOF
 	#
 	if [ $NODECOUNT -eq 1 -o $KUBEALLWORKERS -eq 1 ]; then
 	    cat <<EOF >> $OVERRIDES
-emetallb_controller_tolerations:
+metallb_controller_tolerations:
   - key: "node-role.kubernetes.io/master"
     operator: "Equal"
     value: ""
