@@ -80,7 +80,26 @@ fi
 kubectl create serviceaccount admin -n default
 kubectl create clusterrolebinding cluster-default-admin --clusterrole=cluster-admin --serviceaccount=default:admin
 secretid=`kubectl get serviceaccount admin -n default -o 'go-template={{(index .secrets 0).name}}'`
+#
+# Newer kubernetes lacks automatic secrets for serviceaccounts.
+#
+if [ -z "$secretid" ]; then
+    kubectl -n default apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin-secret
+  annotations:
+    kubernetes.io/service-account.name: admin
+type: kubernetes.io/service-account-token
+EOF
+    secretid="admin-secret"
+fi
 token=`kubectl get secrets $secretid -o 'go-template={{.data.token}}' | base64 -d`
+if [ -z "$token" ]; then
+    echo "ERROR: failed to get admin token, aborting!"
+    exit 1
+fi
 echo -n "$token" > $OURDIR/admin-token.txt
 chmod 644 $OURDIR/admin-token.txt
 
