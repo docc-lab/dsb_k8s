@@ -191,6 +191,8 @@ kubeadm_enabled: true
 dns_min_replicas: 1
 dashboard_enabled: true
 dashboard_token_ttl: 43200
+enable_nodelocaldns: false
+enable_nodelocaldns_secondary: false
 EOF
 if [ "${CONTAINERMANAGER}" = "docker" ]; then
     cat <<EOF >> $OVERRIDES
