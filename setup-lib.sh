@@ -114,6 +114,7 @@ DONFS=1
 NFSEXPORTDIR=$STORAGEDIR/nfs
 NFSMOUNTDIR=/nfs
 NFSASYNC=0
+YQFROMPKG=0
 
 #
 # We have an 'admin' user that gets a random password that comes in from

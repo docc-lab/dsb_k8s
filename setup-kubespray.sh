@@ -19,12 +19,14 @@ echo "Your ${EXPTTYPE} instance is setting up on $NFQDN ." \
     |  mail -s "${EXPTTYPE} Instance Setting Up" ${SWAPPER_EMAIL} &
 
 # First, we need yq.
-are_packages_installed yq
-if [ ! $? -eq 1 ]; then
-    if [ ! "$ARCH" = "aarch64" ]; then
-	$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
-	$SUDO add-apt-repository -y ppa:rmescandon/yq
-	maybe_install_packages yq
+if [ ! $YQFROMPKG -eq 0 ]; then
+    are_packages_installed yq
+    if [ ! $? -eq 1 ]; then
+	if [ ! "$ARCH" = "aarch64" ]; then
+	    $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64
+	    $SUDO add-apt-repository -y ppa:rmescandon/yq
+	    maybe_install_packages yq
+	fi
     fi
 fi
 which yq
@@ -34,10 +36,14 @@ if [ ! $? -eq 0 ]; then
 	fname=yq_linux_arm64
     fi
     curl -L -o /tmp/$fname.tar.gz \
-	https://github.com/mikefarah/yq/releases/download/v4.13.2/$fname.tar.gz
+	https://github.com/mikefarah/yq/releases/download/v4.34.1/$fname.tar.gz
     tar -xzvf /tmp/$fname.tar.gz -C /tmp
     chmod 755 /tmp/$fname
     $SUDO mv /tmp/$fname /usr/local/bin/yq
+    if [ -e /tmp/yq.1 ]; then
+	$SUDO mkdir -p /usr/local/man/man1
+	$SUDO mv /tmp/yq.1 /usr/local/man/man1/
+    fi
 fi
 
 cd $OURDIR
@@ -342,7 +348,7 @@ EOF
 	    fi
 	    mi=`expr $mi + 1`
 	done
-	yq m --inplace --overwrite $OVERRIDES /tmp/metallb.yml
+	yq --inplace ea '. as $item ireduce ({}; . * $item )' $OVERRIDES /tmp/metallb.yml
 	rm -f /tmp/metallb.yml
     else
 	echo "kube_proxy_strict_arp: true" >> $OVERRIDES
