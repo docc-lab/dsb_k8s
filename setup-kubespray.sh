@@ -258,7 +258,6 @@ fi
 if [ "$KUBEENABLEMULTUS" = "1" ]; then
 cat <<EOF >> $OVERRIDES
 kube_network_plugin_multus: true
-multus_version: stable
 EOF
 fi
 
