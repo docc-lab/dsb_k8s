@@ -82,7 +82,8 @@ UBUNTUMIRRORPATH=""
 KUBESPRAYREPO="https://github.com/kubernetes-incubator/kubespray.git"
 KUBESPRAYUSEVIRTUALENV=1
 KUBESPRAY_VIRTUALENV=kubespray-virtualenv
-KUBESPRAYVERSION=release-2.16
+KUBESPRAYVERSION=release-2.20
+CONTAINERMANAGER=docker
 DOCKERVERSION=
 DOCKEROPTIONS=
 KUBEVERSION=
@@ -113,6 +114,7 @@ DONFS=1
 NFSEXPORTDIR=$STORAGEDIR/nfs
 NFSMOUNTDIR=/nfs
 NFSASYNC=0
+YQFROMPKG=0
 
 #
 # We have an 'admin' user that gets a random password that comes in from
@@ -185,6 +187,8 @@ maybe_install_packages() {
 	    if [ $? -eq 0 ]; then
 		$APTGETINSTALL $1
 		retval=`expr $retval \| $?`
+	    else
+		retval=0
 	    fi
 	    shift
 	done

@@ -13,7 +13,7 @@ import hashlib
 import os.path
 import sys
 
-TBCMD = "sudo mkdir -p /local/setup && sudo chown `geni-get user_urn | cut -f4 -d+` /local/setup && sudo -u `geni-get user_urn | cut -f4 -d+` -Hi /bin/sh -c '/local/repository/setup-driver.sh >/local/logs/setup.log 2>&1'"
+TBCMD = "sudo mkdir -p /local/setup && sudo chown `geni-get user_urn | cut -f4 -d+` /local/setup && sudo -u `geni-get user_urn | cut -f4 -d+` -Hi /bin/bash -c '/local/repository/setup-driver.sh >/local/logs/setup.log 2>&1'"
 
 #
 # For now, disable the testbed's root ssh key service until we can remove ours.
@@ -50,8 +50,8 @@ pc.defineParameter(
     longDescription="A specific link speed to use for each link/LAN.  All experiment network interfaces will request this speed.")
 pc.defineParameter(
     "diskImage","Disk Image",
-    portal.ParameterType.IMAGE,
-    "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU18-64-STD",
+    portal.ParameterType.STRING,
+    "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD",
     advanced=True,
     longDescription="An image URN or URL that every node will run.")
 pc.defineParameter(
@@ -67,8 +67,8 @@ pc.defineParameter(
     advanced=True)
 pc.defineParameter(
     "kubesprayVersion","Kubespray Version",
-    portal.ParameterType.STRING,"release-2.16",
-    longDescription="A tag or commit-ish value; we will run `git checkout <value>`.  The default value is the most recent stable value we have tested.  You should only change this if you need a new feature only available on `master`, or an old feature from a prior release.  We support versions back to release-2.13 only.",
+    portal.ParameterType.STRING,"release-2.21",
+    longDescription="A tag or commit-ish value; we will run `git checkout <value>`.  The default value is the most recent stable value we have tested.  You should only change this if you need a new feature only available on `master`, or an old feature from a prior release.  We support versions back to release-2.13 only.  Ubuntu 22 supports only release-2.20 and greater.  You will need to use Ubuntu 20 for anything prior to that.",
     advanced=True)
 pc.defineParameter(
     "kubesprayUseVirtualenv","Kubespray VirtualEnv",
@@ -86,9 +86,15 @@ pc.defineParameter(
     longDescription="A specific release of Helm to install (e.g. v2.12.3); if left empty, Kubespray will choose its current stable version and install that.  Note that the version you pick must exist as a tag in this Docker image repository: https://hub.docker.com/r/lachlanevenson/k8s-helm/tags .",
     advanced=True)
 pc.defineParameter(
+    "containerManager","Container Manager",
+    portal.ParameterType.STRING,"docker",
+    [("docker","docker"),("containerd","containerd")],
+    longDescription="The container manager to use; either docker or containerd.",
+    advanced=True)
+pc.defineParameter(
     "dockerVersion","Docker Version",
     portal.ParameterType.STRING,"",
-    longDescription="A specific Docker version to install; if left empty, Kubespray will choose its current stable version and install that.  As explained in the Kubespray documentation (https://github.com/kubernetes-sigs/kubespray/blob/master/docs/vars.md), this value must be one of those listed at, e.g. https://github.com/kubernetes-sigs/kubespray/blob/release-2.13/roles/container-engine/docker/vars/ubuntu-amd64.yml .",
+    longDescription="A specific Docker version to install; if left empty, Kubespray will choose its current stable version and install that.  As explained in the Kubespray documentation (https://github.com/kubernetes-sigs/kubespray/blob/master/docs/vars.md), this value must be one of those listed at, e.g. https://github.com/kubernetes-sigs/kubespray/blob/release-2.20/roles/container-engine/docker/vars/ubuntu.yml .",
     advanced=True)
 pc.defineParameter(
     "dockerOptions","Dockerd Options",
