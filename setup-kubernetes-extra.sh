@@ -97,7 +97,16 @@ type: kubernetes.io/service-account-token
 EOF
     secretid="admin-secret"
 fi
-token=`kubectl get secrets $secretid -o 'go-template={{.data.token}}' | base64 -d`
+tries=5
+while [ $tries -gt 0 ]; do
+    token=`kubectl get secrets $secretid -o 'go-template={{.data.token}}' | base64 -d`
+    if [ -n "$token" ]; then
+	break
+    else
+	tries=`expr $tries - 1`
+	sleep 8
+    fi
+done
 if [ -z "$token" ]; then
     echo "ERROR: failed to get admin token, aborting!"
     exit 1
