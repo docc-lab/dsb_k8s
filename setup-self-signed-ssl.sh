@@ -64,18 +64,29 @@ for file in `ls -1 $EASY_RSA/openssl*.cnf | xargs` ; do
     $SUDO sed -i -e 's/^\(subjectAltName=.*\)$/#\1/' $file
 done
 
-$SUDO ./clean-all
-$SUDO ./build-ca
-# We needed a CN for the CA build -- but now we have to drop it cause
-# the build-key* scripts don't want it set -- they set it to the first arg,
-# and behave badly if it IS set.
-unset KEY_CN
 hf=`getfqdn $HEAD`
-$SUDO ./build-key-server $hf
-$SUDO cp -p $KEY_DIR/$hf.crt $KEY_DIR/$hf.key $KEY_DIR/ca.crt $EASY_RSA
+if [ -x ./build-ca ]; then
+    $SUDO ./clean-all
+    $SUDO ./build-ca
+    # We needed a CN for the CA build -- but now we have to drop it cause
+    # the build-key* scripts don't want it set -- they set it to the first arg,
+    # and behave badly if it IS set.
+    unset KEY_CN
+    $SUDO ./build-key-server $hf
+    $SUDO cp -p $KEY_DIR/$hf.crt $KEY_DIR/$hf.key $KEY_DIR/ca.crt $EASY_RSA
 
-$SUDO ./build-dh
-$SUDO cp -p $KEY_DIR/dh2048.pem $EASY_RSA
+    $SUDO ./build-dh
+    $SUDO cp -p $KEY_DIR/dh2048.pem $EASY_RSA
+else
+    $SUDO ./easyrsa --batch init-pki
+    $SUDO ./easyrsa --batch build-ca nopass
+    unset KEY_CN
+    $SUDO ./easyrsa --batch build-server-full $hf nopass
+    $SUDO cp -p $EASY_RSA/pki/ca.crt $EASY_RSA/pki/issued/$hf.crt $EASY_RSA/pki/private/$hf.key $EASY_RSA
+
+    $SUDO ./easyrsa --batch gen-dh
+    $SUDO cp -p $EASY_RSA/pki/dh.pem $EASY_RSA
+fi
 
 #
 # Now build keys and set static IPs for the controller and the
@@ -84,7 +95,12 @@ $SUDO cp -p $KEY_DIR/dh2048.pem $EASY_RSA
 for node in $NODES ; do
     nf=`getfqdn $node`
     export KEY_CN="$nf"
-    $SUDO ./build-key $nf
+    if [ -x ./build-key ]; then
+	$SUDO ./build-key $nf
+    else
+	$SUDO ./easyrsa --batch build-client-full $nf nopass
+	$SUDO cp -p $EASY_RSA/pki/issued/$hf.crt $EASY_RSA/pki/private/$hf.key $EASY_RSA
+    fi
 done
 
 unset KEY_COUNTRY
