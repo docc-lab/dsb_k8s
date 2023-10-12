@@ -231,9 +231,9 @@ pc.defineStructParameter(
             portal.ParameterType.STRING,"/dataset",
             longDescription="The mount point at which you want your remote dataset mounted.  Be careful where you mount it -- something might already be there (i.e., /storage is already taken).  Note also that this option requires a network interface, because it creates a link between the dataset and the node where the dataset is available.  Thus, just as for creating extra LANs, you might need to select the Multiplex Flat Networks option, which will also multiplex the blockstore link here."),
         portal.Parameter(
-            "readOnly","Mount Dataset Read-only",
-            portal.ParameterType.BOOLEAN,True,
-            longDescription="Mount the remote dataset in read-only mode.")])
+            "mode","Dataset Mount Mode (R/O, RW clone, persistent RW)",
+            portal.ParameterType.STRING, "readonly", [("readonly", "Read Only"),("rwclone","Read/Write Clone"),("rwpersist","Persistent Read/Write")],
+            longDescription="Mode to mount the dataset with. Readonly is the default. RW clone allows for read/write, but the changes do not persist after experiment termination. Persistent RW causes changes to persist beyond the experiment.")])
 
 #
 # Get any input parameter values that will override our defaults.
@@ -423,7 +423,10 @@ for x in params.datasets:
     bsnode = IG.RemoteBlockstore("bsnode-%d" % (i,),x.mountPoint)
     bsintf = bsnode.interface
     bsnode.dataset = x.urn
-    bsnode.readonly = x.readOnly
+    if x.mode == "readonly":
+        bsnode.readonly = True
+    elif x.mode == "rwclone":
+        bsnode.rwclone = True
     bsnodes.append(bsnode)
 
     bslink = RSpec.Link("bslink-%d" % (i,))
