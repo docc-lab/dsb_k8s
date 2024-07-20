@@ -1,5 +1,15 @@
 #!/bin/bash
 
+set -x
+
+. "`dirname $0`/setup-lib.sh"
+
+if [ -f $OURDIR/dsb-done ]; then
+    exit 0
+fi
+
+logtstart "dsb"
+
 # Variables
 REPO_URL="https://github.com/docc-lab/DeathStarBench.git"
 DOCKER_IMAGE="deathstarbench/hotel-reservation"
@@ -15,3 +25,8 @@ su geniuser -c "docker pull $DOCKER_IMAGE"
 su geniuser -c "kubectl apply -f $REPO_NAME/$KUBERNETES_DIR"
 
 echo "deathstarbench-k8s setup complete"
+
+logtend "dsb"
+
+touch $OURDIR/dsb-done
+exit 0
