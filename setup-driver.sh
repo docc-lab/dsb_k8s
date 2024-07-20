@@ -13,6 +13,8 @@ export SRC=`dirname $0`
 cd $SRC
 . $SRC/setup-lib.sh
 
+chmod +x $SRC/setup-dsb.sh
+
 # Don't run setup-driver.sh twice
 if [ -f $OURDIR/setup-driver-done ]; then
     echo "setup-driver already ran; not running again"
