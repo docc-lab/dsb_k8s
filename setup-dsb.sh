@@ -18,15 +18,19 @@ KUBERNETES_DIR="hotelReservation/kubernetes"  # Path to the Kubernetes directory
 echo "setup deathstarbench in k8s"
 
 # Clone the repository
-# git clone $REPO_URL /local
 cd /local
 git clone $REPO_URL
+
+# Prepare workload generator
+cd /local/DeathStarBench/wrk2
+git submodule update --init --recursive ./deps/luajit/
+sudo apt-get install libssl-dev
+make all
 
 # Pull hotelreservation docker images
 sudo docker pull $DOCKER_IMAGE
 
-# sudo chmod -R 777 /local/DeathStarBench
-# sudo ln -s /local/DeathStarBench /users/royno7/
+# Setup kubernetes cluster
 sudo kubectl apply -Rf /local/DeathStarBench/$KUBERNETES_DIR
 
 echo "deathstarbench-k8s setup complete"
