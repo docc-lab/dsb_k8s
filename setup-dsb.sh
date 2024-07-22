@@ -24,7 +24,8 @@ git clone $REPO_URL
 # Prepare workload generator
 cd /local/DeathStarBench/wrk2
 git submodule update --init --recursive ./deps/luajit/
-sudo apt-get install libssl-dev
+sudo apt-get update
+sudo apt-get install -y libssl-dev
 make all
 
 # Pull hotelreservation docker images
