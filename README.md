@@ -1,10 +1,11 @@
-# DSB HotelReservation K8S usage
+# DSB HotelReservation K8S profile usage
 
 **A. Use the profile to create an experiment.**
    It should work under my user (royno7), and root at least. If it doesn't work under your user, su to mine or root after experiment setup and run "if not" cmds in step B.
 
 **B. Check if several stuff before proceeding forward**
    1. If there is a `DeathStarBench` repository under `/local`.
+
       If not, manually clone `DeathStarBench` under `docclab`:
       ```bash
       git clone https://github.com/docc-lab/DeathStarBench.git
@@ -26,6 +27,7 @@
       kubectl apply -Rf /local/DeathStarBench/hotelreservation/kubernetes
       ```
    4. Check if there is wrk executable under /local/DeathStarBench/wrk2
+
       If not, build from src
       ```bash
       cd /local/DeathStarBench/wrk2
