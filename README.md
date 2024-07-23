@@ -1,8 +1,9 @@
 # DSB HotelReservation K8S usage
 
-1. Use the profile to create an experiment.
-   1.  It should work under my user (royno7), and root at least. If it doesn't work under your user, su to mine or root after experiment setup and run "if not" cmds in step 2.
-2. Check if several stuff
+**A. Use the profile to create an experiment.**
+   It should work under my user (royno7), and root at least. If it doesn't work under your user, su to mine or root after experiment setup and run "if not" cmds in step B.
+
+**B. Check if several stuff before proceeding forward**
    1. If there is a `DeathStarBench` repository under `/local`.
       If not, manually clone `DeathStarBench` under `docclab`:
       ```bash
@@ -34,7 +35,38 @@
       make all
       ```
 
-3. Run workload generator 
+
+**C. (Optional) Build and use your own docker images from src**
+   1. Build HotelReservation executable from src
+      ```bash
+      cd /local/DeathStarBench/hotelreservation
+      make bin
+      ```
+   2. Build images from current filesystem
+      Before executing following cmds, take a look at `build-docker-images.sh` script to accomendate your needs--including 
+
+      - `--no-cache` to build images w/t using any cached layers.
+      - `--push` to push image to docker hub (user variable in script and extra auth with `docker login` are required)
+      - `--output type=docker` to output image to local image store instead of pushing.
+      - `--cache-from` to specifies external cache source for build
+      - etc...
+      
+      Then use the script to build images
+      ```bash
+      cd /local/DeathStarBench/hotelreservation/kubernetes/scripts
+      ./build-docker-images.sh
+      ```
+   3. Update yamls
+      ```bash
+      cd /local/DeathStarBench/hotelreservation/kubernetes/scripts
+      ./update-yamls.sh
+      ```
+   4. Apply updated yamls in k8s, and continue to step D
+      ```bash
+      kubectl apply -Rf /local/DeathStarBench/hotelReservation/kubernetes
+      ```
+
+**D. Run workload generator**
    1. Find IP address of services
       ```bash
       kubectl get services | grep frontend
@@ -58,9 +90,11 @@
       ../wrk2/wrk -D exp -t 2 -c 2 -d 30 -L -s ./wrk2/scripts/hotel-reservation/mixed-workload_type_1.lua http://<replace with frontend ip in I. >:5000 -R 2
       ```
 
-4. Jaeger Trace
-   ```bash
-   http://<jaeger service IP>:6831
-   ```
-   Note that all IPs in k8s cluster are not accessible from outside as CloudLab only provides a few public IPs per experiment.
-   So if you want to check Jaeger UI, extra steps to setup graphic ssh to use browser are required on both your local and remote machine. I'll leave this part on **your** own.
+**E. Check Jaeger Trace**
+   1. Via Jaeger web UI
+      ```bash
+      http://<jaeger service IP>:6831
+      ```
+      Note that all IPs in k8s cluster are not accessible from outside as CloudLab only provides a few public IPs per experiment.
+      So if you want to check Jaeger UI, extra steps to setup graphic ssh to use browser are required on both your local and remote machine. I'll leave this part on your own.
+   2. Via api
