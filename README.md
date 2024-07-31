@@ -122,7 +122,8 @@
 
 ## E. Check Jaeger Trace
 
-   1. (recommended) Via Jaeger web UI with port forwarding
+   1. (Recommended) Via Jaeger web UI with port forwarding
+
       Note that all IPs in k8s cluster are not accessible from outside as CloudLab only provides a few public IPs per experiment.
       You can either setup port forwarding from k8s controler node to your local as the following (or use graphic ssh, see step E.2).
 
