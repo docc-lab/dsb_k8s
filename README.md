@@ -2,11 +2,12 @@
 
 ## A. Use the profile to create an experiment.
 
+   The cloudlab profile is called hotelreserv-k8s-setup [link](https://www.cloudlab.us/p/Tracing-Pythia/hotelreserv-k8s-setup).
    It should work under my user (royno7), and root at least. If it doesn't work under your user, su to mine or root after experiment setup and run "if not" cmds in step B.
 
 ## B. Check if several stuff before proceeding forward
 
-   1. If there is a `DeathStarBench` repository under `/local`.
+   1. Check if there is a `DeathStarBench` repository under `/local`.
 
       If not, manually clone `DeathStarBench` under `docclab`:
 
